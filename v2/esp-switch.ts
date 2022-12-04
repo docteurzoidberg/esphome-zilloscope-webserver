@@ -1,6 +1,5 @@
 import { html, css, LitElement } from "lit";
 import { customElement, property } from "lit/decorators.js";
-import cssReset from "./css/reset";
 
 const checkboxID: string = "checkbox-lever";
 
@@ -86,7 +85,6 @@ export class EspSwitch extends LitElement {
 
   static get styles() {
     return [
-      cssReset,
       css`
         .sw,
         .sw * {

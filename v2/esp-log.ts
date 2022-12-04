@@ -48,8 +48,12 @@ export class DebugLog extends LitElement {
 
   render() {
     return html`
-      <div class="flow-x">
-        <table>
+      <link
+        href="http://unpkg.com/nes.css/css/nes-core.min.css"
+        rel="stylesheet"
+      />
+      <div class="nes-table-responsive">
+        <table class="nes-table is-bordered"></table>
           <thead>
             <tr>
               <th>Time</th>
@@ -78,52 +82,6 @@ export class DebugLog extends LitElement {
   }
 
   static get styles() {
-    return css`
-      table {
-        font-family: monospace;
-        background-color: #1c1c1c;
-        color: white;
-        width: 100%;
-        border: 1px solid #dfe2e5;
-        line-height: 1;
-      }
-
-      thead {
-        border: 1px solid #dfe2e5;
-        line-height: 1rem;
-      }
-      th {
-        text-align: left;
-      }
-      th,
-      td {
-        padding: 0.25rem 0.5rem;
-      }
-      pre {
-        margin: 0;
-      }
-      .v {
-        color: #888888;
-      }
-      .d {
-        color: #00dddd;
-      }
-      .c {
-        color: magenta;
-      }
-      .i {
-        color: limegreen;
-      }
-      .w {
-        color: yellow;
-      }
-      .e {
-        color: red;
-        font-weight: bold;
-      }
-      .flow-x {
-        overflow-x: auto;
-      }
-    `;
+    return css``;
   }
 }

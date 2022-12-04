@@ -14,8 +14,10 @@
   "dependencies": {
     "http-proxy-middleware": "^2.0.1",
     "lit": "^2.0.2",
+    "nes.css": "^2.3.0",
     "rollup-plugin-copy": "^3.4.0",
     "rollup-plugin-gzip": "^2.5.0",
+    "rollup-plugin-lit-css": "^4.0.0",
     "rollup-plugin-minify-html-template-literals": "^1.2.0",
     "vite-plugin-html": "^2.1.1",
     "vite-plugin-package-version": "^1.0.2",

@@ -6,8 +6,8 @@ import "./esp-entity-table";
 import "./esp-log";
 import "./esp-switch";
 import "./esp-logo";
-import cssReset from "./css/reset";
-import cssButton from "./css/button";
+import "./zillo-paint";
+import "./zillo-tabs";
 
 window.source = new EventSource(getBasePath() + "/events");
 
@@ -28,7 +28,11 @@ export default class EspApp extends LitElement {
 
   darkQuery: MediaQueryList = window.matchMedia("(prefers-color-scheme: dark)");
 
-  frames = [{ color: "inherit" }, { color: "red", transform: "scale(1.25) translateY(-30%)" }, { color: "inherit" }];
+  frames = [
+    { color: "inherit" },
+    { color: "red", transform: "scale(1.25) translateY(-30%)" },
+    { color: "inherit" },
+  ];
 
   constructor() {
     super();
@@ -51,7 +55,6 @@ export default class EspApp extends LitElement {
       if (d.length) {
         const config = JSON.parse(messageEvent.data);
         this.config = config;
-
         document.title = config.title;
         document.documentElement.lang = config.lang;
       }
@@ -96,15 +99,20 @@ export default class EspApp extends LitElement {
   render() {
     return html`
       <h1>
-        <a href="https://esphome.io/web-api" class="logo">
-          <esp-logo></esp-logo>
-        </a>
+        <esp-logo></esp-logo>
         ${this.config.title}
-        <span id="beat" title="${this.version}">❤</span>
+        <img id="beat" src="/logo.png" title="${this.version}" />
       </h1>
-      <main class="flex-grid-half">
-        <section class="col">
+
+      <zillo-tabs>
+        <h2 slot="tab">PAINT</h2>
+        <section slot="panel"><zillo-paint></zillo-paint></section>
+        <h2 slot="tab">ENTITIES</h2>
+        <section slot="panel">
           <esp-entity-table></esp-entity-table>
+        </section>
+        <h2 slot="tab">SETTINGS</h2>
+        <section slot="panel">
           <h2>
             <esp-switch
               color="var(--primary-color,currentColor)"
@@ -120,64 +128,30 @@ export default class EspApp extends LitElement {
             </esp-switch>
             Scheme
           </h2>
-          ${this.ota()}
         </section>
-        <section class="col">
+        <h2 slot="tab">LOGS</h2>
+        <section slot="panel">
           <esp-log rows="50"></esp-log>
         </section>
-      </main>
+        <h2 slot="tab">OTA</h2>
+        <section slot="panel">${this.ota()}</section>
+      </zillo-tabs>
     `;
   }
 
   static get styles() {
     return [
-      cssReset,
-      cssButton,
       css`
-        .flex-grid {
-          display: flex;
-        }
-        .flex-grid .col {
-          flex: 2;
-        }
-        .flex-grid-half {
-          display: flex;
-          justify-content: space-evenly;
-        }
-        .col {
-          width: 48%;
-        }
-
-        @media (max-width: 600px) {
-          .flex-grid,
-          .flex-grid-half {
-            display: block;
-          }
-          .col {
-            width: 100%;
-            margin: 0 0 10px 0;
-          }
-        }
-
-        * {
-          box-sizing: border-box;
-        }
-        .flex-grid {
-          margin: 0 0 20px 0;
-        }
         h1 {
           text-align: center;
           width: 100%;
           line-height: 4rem;
         }
-        h1,
-        h2 {
-          border-bottom: 1px solid #eaecef;
-          margin-bottom: 0.25rem;
-        }
         #beat {
           float: right;
-          height: 1rem;
+          vertical-align: middle;
+          height: 4rem;
+          margin: 10px;
         }
         a.logo {
           height: 4rem;

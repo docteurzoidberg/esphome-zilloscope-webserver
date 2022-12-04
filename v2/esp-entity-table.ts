@@ -1,7 +1,5 @@
 import { html, css, LitElement } from "lit";
 import { customElement, state } from "lit/decorators.js";
-import cssReset from "./css/reset";
-import cssButton from "./css/button";
 
 interface entityConfig {
   unique_id: string;
@@ -69,7 +67,10 @@ export class EntityTable extends LitElement {
   }
   actionButton(entity: entityConfig, label: String, action?: String) {
     let a = action || label.toLowerCase();
-    return html`<button class="rnd" @click=${() => this.restAction(entity, a)}>
+    return html`<button
+      class="nes-btn is-primary"
+      @click=${() => this.restAction(entity, a)}
+    >
       ${label}
     </button>`;
   }
@@ -107,7 +108,8 @@ export class EntityTable extends LitElement {
     max: Number,
     step: Number
   ) {
-    return html`<div class=range><label>${min || 0}</label>
+    return html`<div class="range">
+      <label>${min || 0}</label>
       <input
         type="${entity.mode == 1 ? "number" : "range"}"
         name="${entity.unique_id}"
@@ -121,7 +123,8 @@ export class EntityTable extends LitElement {
           this.restAction(entity, `${action}?${opt}=${val}`);
         }}"
       />
-      <label>${max || 100}</label></div>`;
+      <label>${max || 100}</label>
+    </div>`;
   }
 
   switch(entity: entityConfig) {
@@ -193,7 +196,7 @@ export class EntityTable extends LitElement {
       ${this.actionButton(entity, "☐", "stop")}
       ${this.actionButton(entity, "↓", "close")}`;
     if (entity.domain === "button")
-      return html`${this.actionButton(entity, "☐", "press ")}`;
+      return html`${this.actionButton(entity, "CLICK ME", "press ")}`;
     if (entity.domain === "select") {
       return this.select(entity, "set", "option", entity.option, entity.value);
     }
@@ -211,7 +214,7 @@ export class EntityTable extends LitElement {
     if (entity.domain === "climate") {
       let target_temp_slider, target_temp_label;
       if (entity.target_temperature_low !== undefined) {
-        target_temp_label= html`${entity.target_temperature_low}&nbsp;..&nbsp;${entity.target_temperature_high}`;
+        target_temp_label = html`${entity.target_temperature_low}&nbsp;..&nbsp;${entity.target_temperature_high}`;
         target_temp_slider = html`
           ${this.range(
             entity,
@@ -223,7 +226,7 @@ export class EntityTable extends LitElement {
             entity.step
           )}
           ${this.range(
-             entity,
+            entity,
             "set",
             "target_temperature_high",
             entity.target_temperature_high,
@@ -233,7 +236,7 @@ export class EntityTable extends LitElement {
           )}
         `;
       } else {
-        target_temp_label= html`${entity.target_temperature}`;
+        target_temp_label = html`${entity.target_temperature}`;
         target_temp_slider = html`
           ${this.range(
             entity,
@@ -247,18 +250,26 @@ export class EntityTable extends LitElement {
         `;
       }
       return html`
-        <label>Current:&nbsp;${entity.current_temperature}, Target:&nbsp;${target_temp_label}</label>
+        <label
+          >Current:&nbsp;${entity.current_temperature},
+          Target:&nbsp;${target_temp_label}</label
+        >
         ${target_temp_slider}
         <br />Mode:
         ${entity.modes.map(
-          (mode) => html`
-            <label><input type="radio" name="${entity.unique_id}_mode" @change="${(e: Event) => {
-              let val = e.target?.value;
-              this.restAction(entity, `set?mode=${val}`);
-            }}"
-            value="${mode}" ?checked=${entity.mode === mode}>${mode}</label>`
-          )
-        }
+          (mode) => html` <label
+            ><input
+              type="radio"
+              name="${entity.unique_id}_mode"
+              @change="${(e: Event) => {
+                let val = e.target?.value;
+                this.restAction(entity, `set?mode=${val}`);
+              }}"
+              value="${mode}"
+              ?checked=${entity.mode === mode}
+            />${mode}</label
+          >`
+        )}
       `;
     }
     return html``;
@@ -275,77 +286,36 @@ export class EntityTable extends LitElement {
 
   render() {
     return html`
-      <table>
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>State</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${this.entities.map(
-            (component) => html`
-              <tr>
-                <td>${component.name}</td>
-                <td>${component.state}</td>
-                <td>${this.control(component)}</td>
-              </tr>
-            `
-          )}
-        </tbody>
-      </table>
+      <link
+        href="http://unpkg.com/nes.css/css/nes-core.min.css"
+        rel="stylesheet"
+      />
+      <div class="nes-table-responsive">
+        <table class="nes-table is-bordered">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>State</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${this.entities.map(
+              (component) => html`
+                <tr>
+                  <td>${component.name}</td>
+                  <td>${component.state}</td>
+                  <td>${this.control(component)}</td>
+                </tr>
+              `
+            )}
+          </tbody>
+        </table>
+      </div>
     `;
   }
 
   static get styles() {
-    return [
-      cssReset,
-      cssButton,
-      css`
-        table {
-          border-spacing: 0;
-          border-collapse: collapse;
-          width: 100%;
-          border: 1px solid currentColor;
-        }
-
-        th {
-          font-weight: 600;
-          text-align: left;
-        }
-        th,
-        td {
-          padding: 0.25rem 0.5rem;
-          border: 1px solid currentColor;
-        }
-        td:nth-child(2),
-        th:nth-child(2) {
-          text-align: center;
-        }
-        tr th,
-        tr:nth-child(2n) {
-          background-color: rgba(127, 127, 127, 0.3);
-        }
-        select {
-          background-color: inherit;
-          color: inherit;
-          width: 100%;
-          border-radius: 4px;
-        }
-        option {
-          color: currentColor;
-          background-color: var(--primary-color, currentColor);
-        }
-        input[type="range"] {
-          width: calc(100% - 8rem);
-          height: 0.75rem;
-        }
-        .range {
-          text-align: center;
-        }
-
-      `,
-    ];
+    return css``;
   }
 }
