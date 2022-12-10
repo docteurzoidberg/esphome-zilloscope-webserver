@@ -40,6 +40,10 @@ export default class EspApp extends LitElement {
     super();
   }
 
+  //createRenderRoot() {
+  //  return this; // turn off shadow dom to access external styles
+  //}
+
   firstUpdated(changedProperties: PropertyValues) {
     super.firstUpdated(changedProperties);
     document.getElementsByTagName("head")[0].innerHTML +=

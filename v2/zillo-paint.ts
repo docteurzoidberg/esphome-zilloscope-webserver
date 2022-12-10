@@ -1,6 +1,9 @@
 import { html, css, LitElement } from "lit";
 import { customElement, state, query, property } from "lit/decorators.js";
 
+//DOC: passer a true pour dev sans les maj zillo
+const nozillo = false;
+
 const canvasScale = 20;
 const canvasBorderWidth = 4;
 
@@ -120,10 +123,12 @@ export default class ZilloPaint extends LitElement {
   primaryColor: string = "#FFFFFF";
   @state()
   secondaryColor: string = "#000000";
-
+  @state()
+  currentTool: string = "brush";
+  @state()
+  brushSize: number = 1;
   @state()
   pixel_x: number = 0;
-
   @state()
   pixel_y: number = 0;
 
@@ -143,6 +148,12 @@ export default class ZilloPaint extends LitElement {
 
   constructor() {
     super();
+
+    if (nozillo) {
+      this.width = 16;
+      this.height = 16;
+      this._initCanvas(16, 16);
+    }
   }
 
   protected firstUpdated(
@@ -198,13 +209,11 @@ export default class ZilloPaint extends LitElement {
     }
   }
 
+  //handle palette's color mouse left/right clicks
   handleColorMouseDown(e: MouseEvent) {
     //if left click. set selected color to primary. if right click. to secondary
-    //console.log(e.target);
-
-    const color = e.target.getAttribute("color");
-    //console.log(color);
-    //console.log(e.button);
+    const target = e.target as HTMLElement;
+    const color = target.getAttribute("color") || "#000000";
     if (e.button == 0) {
       this.primaryColor = color;
     } else if (e.button == 2) {
@@ -212,6 +221,7 @@ export default class ZilloPaint extends LitElement {
     }
   }
 
+  //start painting
   handleCanvasMouseDown(e: MouseEvent) {
     if (e.button === 1) return;
     if (!this.drawing) {
@@ -223,23 +233,20 @@ export default class ZilloPaint extends LitElement {
     const rgb = hexToRgb(
       this.drawingColorPrimary ? this.primaryColor : this.secondaryColor
     );
-    const should_redraw = this._paintPixel();
+    const should_redraw = this._paintPixel(x, y, rgb);
     if (should_redraw) {
       this._drawCanvas();
       this.callSetPixel(x, y, rgb);
     }
   }
 
+  //release painting
   handleCanvasMouseUp() {
     this.drawing = false;
   }
 
-  _paintPixel() {
-    const rgb = hexToRgb(
-      this.drawingColorPrimary ? this.primaryColor : this.secondaryColor
-    );
-    const x = this.pixel_x - 1;
-    const y = this.pixel_y - 1;
+  //set typedArray pixel's byte from rgb color
+  _paintPixel(x: number, y: number, rgb: any) {
     const index = (y * this.width + x) * 4;
     const r = this.typedArray[index];
     const g = this.typedArray[index + 1];
@@ -260,16 +267,19 @@ export default class ZilloPaint extends LitElement {
     this.pixel_x = Math.ceil(this.mouse_x / this.calcScaleX);
     this.pixel_y = Math.ceil(this.mouse_y / this.calcScaleY);
 
+    if (this.pixel_x < 1) this.pixel_x = 1;
+    if (this.pixel_y < 1) this.pixel_y = 1;
+    if (this.pixel_x > this.width) this.pixel_x = this.width;
+    if (this.pixel_y > this.height) this.pixel_y = this.height;
+
     if (!this.drawing) return;
-    if (this.pixel_x < 1 || this.pixel_y < 1) return;
-    if (this.pixel_x > this.width || this.pixel_y > this.height) return;
 
     const rgb = hexToRgb(
       this.drawingColorPrimary ? this.primaryColor : this.secondaryColor
     );
     const x = this.pixel_x - 1;
     const y = this.pixel_y - 1;
-    const should_redraw = this._paintPixel();
+    const should_redraw = this._paintPixel(x, y, rgb);
     if (should_redraw) {
       this._drawCanvas();
       this.callSetPixel(x, y, rgb);
@@ -277,7 +287,7 @@ export default class ZilloPaint extends LitElement {
   }
 
   handleCanvasMouseOut(e: MouseEvent) {
-    this.drawing = false;
+    //this.drawing = false;
   }
 
   handleImport(e: Event) {
@@ -314,6 +324,8 @@ export default class ZilloPaint extends LitElement {
 
   handleExport() {
     const importcanvas = document.createElement("canvas");
+    importcanvas.width = this.width;
+    importcanvas.height = this.height;
     const importctx = importcanvas.getContext("2d");
     if (!importctx) {
       console.log("Could not get context");
@@ -364,13 +376,11 @@ export default class ZilloPaint extends LitElement {
     const data = new Blob([this.arrayBuffer], {
       type: "octet/stream",
     });
-    //const formData = new FormData();
-    //formData.append("buffer", data);
     fetch(`${basePath}/setbuffer`, {
       method: "POST",
       body: data,
     }).then((r) => {
-      console.log(r);
+      //console.log(r);
     });
   }
 
@@ -519,6 +529,29 @@ export default class ZilloPaint extends LitElement {
           </div>
         </div>
         <div class="row">
+          <div id="tools">
+            <h2>Tools</h2>
+            <div>
+              <div class="tool" tool="brush">
+                <h4>Brush</h4>
+                <div>size: (//todo: slider)</div>
+                <div>shape: (//todo: options square/round)</div>
+              </div>
+              <div class="tool" tool="picker">
+                <h4>Colorpicker</h4>
+              </div>
+              <div class="tool" tool="bucket"><h4>Fill</h4></div>
+              <div class="tool" tool="line"><h4>Line</h4></div>
+              <div class="tool" tool="shape">
+                <h4>Shapes</h4>
+                <div>shape: (//todo: options rectangle round)</div>
+                <div>fill: (//todo: checkbox)</div>
+                <div>border: (//todo: checkbox)</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="row">
           <div id="palette">
             <h2>Palette</h2>
             <div id="colors">${this.renderPalette()}</div>
@@ -626,6 +659,10 @@ export default class ZilloPaint extends LitElement {
       }
       #importimage {
         display: none;
+      }
+      #tools h4 {
+        text-decoration: underline;
+        margin-top: 4px;
       }
     `;
   }
