@@ -156,9 +156,9 @@ export default class ZilloPaint extends LitElement {
     this.ctx = this.canvas.getContext("2d");
 
     if (nozillo && this.width == 0 && this.height == 0) {
-      this.width = 16;
-      this.height = 16;
-      this._initCanvas(16, 16);
+      this.width = 32;
+      this.height = 8;
+      this._initCanvas(this.width, this.height);
       return;
     }
 
@@ -235,7 +235,7 @@ export default class ZilloPaint extends LitElement {
     const rgb = hexToRgb(
       this.drawingColorPrimary ? this.primaryColor : this.secondaryColor
     );
-    const should_redraw = this._paintPixel(x, y, rgb);
+    const should_redraw = this._useBrush(x, y, rgb, this.brushSize);
     if (should_redraw) {
       this._drawCanvas();
       this.callSetPixel(x, y, rgb);
@@ -263,6 +263,20 @@ export default class ZilloPaint extends LitElement {
     return false;
   }
 
+  // use current brush to se pixels
+  _useBrush(x: number, y: number, rgb: any, size: number) {
+    if (size == 1) {
+      return this._paintPixel(x, y, rgb);
+    }
+
+    for (let i = -Math.floor(size / 2); i < size - 1; i++) {
+      for (let j = -Math.floor(size / 2); j < size - 1; j++) {
+        this._paintPixel(x + i, y + j, rgb);
+      }
+    }
+    return true;
+  }
+
   handleCanvasMouseMove(e: MouseEvent) {
     this.mouse_x = e.offsetX;
     this.mouse_y = e.offsetY;
@@ -281,7 +295,7 @@ export default class ZilloPaint extends LitElement {
     );
     const x = this.pixel_x - 1;
     const y = this.pixel_y - 1;
-    const should_redraw = this._paintPixel(x, y, rgb);
+    const should_redraw = this._useBrush(x, y, rgb, this.brushSize);
     if (should_redraw) {
       this._drawCanvas();
       this.callSetPixel(x, y, rgb);
@@ -476,6 +490,16 @@ export default class ZilloPaint extends LitElement {
       });
   }
 
+  /**
+   * Updates the slider prop's value.
+   * @param {EventObject} e The event object.
+   */
+  _updateValue(e: EventObject) {
+    const [element] = e.composedPath();
+    console.log(element.value);
+    this.brushSize = element.value;
+  }
+
   render() {
     return html`<link
         href="http://unpkg.com/nes.css/css/nes-core.min.css"
@@ -536,7 +560,15 @@ export default class ZilloPaint extends LitElement {
             <div>
               <div class="tool" tool="brush">
                 <h4>Brush</h4>
-                <div>size: (//todo: slider)</div>
+                <div>size:</div>
+                <input
+                  type="range"
+                  min="1"
+                  max="5"
+                  value="1"
+                  step="2"
+                  @change=${this._updateValue}
+                />
                 <div>shape: (//todo: options square/round)</div>
               </div>
               <div class="tool" tool="picker">
