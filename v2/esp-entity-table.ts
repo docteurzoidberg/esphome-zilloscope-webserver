@@ -286,10 +286,6 @@ export class EntityTable extends LitElement {
 
   render() {
     return html`
-      <link
-        href="http://unpkg.com/nes.css/css/nes-core.min.css"
-        rel="stylesheet"
-      />
       <div class="nes-table-responsive">
         <table class="nes-table is-bordered">
           <thead>

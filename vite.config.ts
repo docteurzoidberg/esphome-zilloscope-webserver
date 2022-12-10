@@ -88,6 +88,8 @@ export default defineConfig({
     port: 3004,
     strictPort: true,
     proxy: {
+      "/setpixel": proxy_target,
+      "/setbuffer": proxy_target,
       "/light": proxy_target,
       "/select": proxy_target,
       "/cover": proxy_target,
