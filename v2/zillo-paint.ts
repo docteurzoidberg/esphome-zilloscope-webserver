@@ -2,7 +2,7 @@ import { html, css, LitElement } from "lit";
 import { customElement, state, query, property } from "lit/decorators.js";
 
 //DOC: passer a true pour dev sans les maj zillo
-const nozillo = false;
+const nozillo = true;
 
 const canvasScale = 20;
 const canvasBorderWidth = 4;
@@ -148,18 +148,20 @@ export default class ZilloPaint extends LitElement {
 
   constructor() {
     super();
-
-    if (nozillo) {
-      this.width = 16;
-      this.height = 16;
-      this._initCanvas(16, 16);
-    }
   }
 
   protected firstUpdated(
     _changedProperties: Map<string | number | symbol, unknown>
   ): void {
     this.ctx = this.canvas.getContext("2d");
+
+    if (nozillo && this.width == 0 && this.height == 0) {
+      this.width = 16;
+      this.height = 16;
+      this._initCanvas(16, 16);
+      return;
+    }
+
     window.source.addEventListener("ping", (e: Event) => {
       //console.dir(e);
       const messageEvent = e as MessageEvent;
