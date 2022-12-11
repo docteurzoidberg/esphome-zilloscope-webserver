@@ -414,23 +414,30 @@ export default class ZilloPaint extends LitElement {
 
   draw() {
     const ctx = this.ctx;
+
+    //fill with white backgound (for transparency)
     ctx.fillStyle = "white";
     ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
+
+    //drawing buffer to canvas
     for (let x = 0; x < this.width; x++) {
       for (let y = 0; y < this.height; y++) {
-        // draw pixel
+        // get color from buffer
         const pixelIndex = (y * this.width + x) * 4;
         const dataview = new DataView(this.arrayBuffer);
         const r = dataview.getUint8(pixelIndex);
         const g = dataview.getUint8(pixelIndex + 1);
         const b = dataview.getUint8(pixelIndex + 2);
+        //put pixel color but at 0.9 alpha on canvas
         ctx.fillStyle = "rgba(" + r + "," + g + "," + b + ", 0.9)";
         const canvasX = x * canvasScale + canvasBorderWidth * (x + 1);
         const canvasY = y * canvasScale + canvasBorderWidth * (y + 1);
+        //draw scaled pixel rect
         ctx.fillRect(canvasX, canvasY, canvasScale, canvasScale);
       }
     }
 
+    //Draw grid
     ctx.strokeStyle = "black";
     ctx.lineWidth = canvasBorderWidth;
     for (
@@ -498,7 +505,7 @@ export default class ZilloPaint extends LitElement {
    * Updates the slider prop's value.
    * @param {EventObject} e The event object.
    */
-  _updateValue(e: EventObject) {
+  _updateBrushValue(e: EventObject) {
     const [element] = e.composedPath();
     console.log(element.value);
     this.brushSize = element.value;
@@ -571,7 +578,7 @@ export default class ZilloPaint extends LitElement {
                   max="5"
                   value="1"
                   step="2"
-                  @change=${this._updateValue}
+                  @change=${this._updateBrushValue}
                 />
                 <div>shape: (//todo: options square/round)</div>
               </div>
