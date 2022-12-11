@@ -195,11 +195,11 @@ export default class ZilloPaint extends LitElement {
   _clearBuffer(rgb?: any) {
     //default: black
     if (!rgb) rgb = { r: 0, g: 0, b: 0 };
-    for (let i = 0; i < this.typedArray.length; i++) {
-      this.typedArray[i * 4 + 0] = rgb.r;
-      this.typedArray[i * 4 + 1] = rgb.g;
-      this.typedArray[i * 4 + 2] = rgb.b;
-      this.typedArray[i * 4 + 3] = 0;
+    for (let i = 0; i < this.typedArray.length; i += 4) {
+      this.typedArray[i + 0] = rgb.r;
+      this.typedArray[i + 1] = rgb.g;
+      this.typedArray[i + 2] = rgb.b;
+      this.typedArray[i + 3] = 0;
     }
   }
   _drawCanvas() {
@@ -209,6 +209,41 @@ export default class ZilloPaint extends LitElement {
       this.draw();
       this.ctx.restore();
     }
+  }
+
+  //set typedArray pixel's byte from rgb color
+  _paintPixel(x: number, y: number, rgb: any) {
+    if (x >= this.width || x < 0 || y >= this.height || y < 0) {
+      console.log(`invalid coordinates: x: ${x} y: ${y}`);
+      return false;
+    }
+    const index = (y * this.width + x) * 4;
+    const r = this.typedArray[index];
+    const g = this.typedArray[index + 1];
+    const b = this.typedArray[index + 2];
+    if (r != rgb?.r || g != rgb?.g || b != rgb?.b) {
+      this.typedArray[index] = rgb?.r;
+      this.typedArray[index + 1] = rgb?.g;
+      this.typedArray[index + 2] = rgb?.b;
+      this.typedArray[index + 3] = 0;
+      return true;
+    }
+    return false;
+  }
+
+  // use current brush to se pixels
+  _useBrush(x: number, y: number, rgb: any, size: number) {
+    if (size == 1) {
+      return this._paintPixel(x, y, rgb);
+    }
+    let redraw = false;
+    for (let i = -Math.floor(size / 2); i < size - 1; i++) {
+      for (let j = -Math.floor(size / 2); j < size - 1; j++) {
+        //todo: avoid calling paintpixel when bad coordinates
+        if (this._paintPixel(x + i, y + j, rgb)) redraw = true;
+      }
+    }
+    return redraw;
   }
 
   //handle palette's color mouse left/right clicks
@@ -238,43 +273,12 @@ export default class ZilloPaint extends LitElement {
     const should_redraw = this._useBrush(x, y, rgb, this.brushSize);
     if (should_redraw) {
       this._drawCanvas();
-      this.callSetPixel(x, y, rgb);
     }
   }
 
   //release painting
   handleCanvasMouseUp() {
     this.drawing = false;
-  }
-
-  //set typedArray pixel's byte from rgb color
-  _paintPixel(x: number, y: number, rgb: any) {
-    const index = (y * this.width + x) * 4;
-    const r = this.typedArray[index];
-    const g = this.typedArray[index + 1];
-    const b = this.typedArray[index + 2];
-    if (r != rgb?.r || g != rgb?.g || b != rgb?.b) {
-      this.typedArray[index] = rgb?.r;
-      this.typedArray[index + 1] = rgb?.g;
-      this.typedArray[index + 2] = rgb?.b;
-      this.typedArray[index + 3] = 0;
-      return true;
-    }
-    return false;
-  }
-
-  // use current brush to se pixels
-  _useBrush(x: number, y: number, rgb: any, size: number) {
-    if (size == 1) {
-      return this._paintPixel(x, y, rgb);
-    }
-
-    for (let i = -Math.floor(size / 2); i < size - 1; i++) {
-      for (let j = -Math.floor(size / 2); j < size - 1; j++) {
-        this._paintPixel(x + i, y + j, rgb);
-      }
-    }
-    return true;
   }
 
   handleCanvasMouseMove(e: MouseEvent) {

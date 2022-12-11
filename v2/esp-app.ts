@@ -119,7 +119,7 @@ export default class EspApp extends LitElement {
         <h2 slot="tab">PAINT</h2>
         <section slot="panel">
           <zillo-paint
-            width="${this.height}"
+            width="${this.width}"
             height="${this.height}"
           ></zillo-paint>
         </section>
