@@ -72,7 +72,19 @@ const nesPalette = [
   "#F8D8F8",
 ];
 
-const hexToRgb = function (hex: string) {
+interface rgb {
+  r: number;
+  g: number;
+  b: number;
+}
+
+const rgbToHex = (rgb: rgb) => {
+  return (
+    "#" +
+    ((1 << 24) | (rgb.r << 16) | (rgb.g << 8) | rgb.b).toString(16).slice(1)
+  );
+};
+const hexToRgb = (hex: string) => {
   var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   return result
     ? {
@@ -210,7 +222,7 @@ export default class ZilloPaint extends LitElement {
     this._drawCanvas();
   }
 
-  _clearBuffer(rgb?: any) {
+  _clearBuffer(rgb?: rgb) {
     //default: black
     if (!rgb) rgb = { r: 0, g: 0, b: 0 };
     for (let i = 0; i < this.typedArray.length; i += 4) {
@@ -230,7 +242,7 @@ export default class ZilloPaint extends LitElement {
   }
 
   //set typedArray pixel's byte from rgb color
-  _paintPixel(x: number, y: number, rgb: any) {
+  _paintPixel(x: number, y: number, rgb: rgb) {
     if (x >= this.width || x < 0 || y >= this.height || y < 0) {
       console.log(`invalid coordinates: x: ${x} y: ${y}`);
       return false;
@@ -247,6 +259,20 @@ export default class ZilloPaint extends LitElement {
       return true;
     }
     return false;
+  }
+
+  //get color from typedArray pixel's
+  _getPixel(x: number, y: number): rgb | null {
+    if (x >= this.width || x < 0 || y >= this.height || y < 0) {
+      console.log(`invalid coordinates: x: ${x} y: ${y}`);
+      return null;
+    }
+    const index = (y * this.width + x) * 4;
+    return {
+      r: this.typedArray[index],
+      g: this.typedArray[index + 1],
+      b: this.typedArray[index + 2],
+    };
   }
 
   _startUseTool(tool: string, x: number, y: number, button: number) {
@@ -270,6 +296,14 @@ export default class ZilloPaint extends LitElement {
     } else if (tool == "eraser") {
       const rgb = hexToRgb("#000000");
       should_redraw = this._useBrush(x, y, rgb, this.brushSize);
+    } else if (tool == "colorpicker") {
+      const rgb = this._getPixel(x, y);
+      if (!rgb) return;
+      if (this.drawingColorPrimary) {
+        this.primaryColor = rgbToHex(rgb);
+      } else {
+        this.secondaryColor = rgbToHex(rgb);
+      }
     }
 
     if (should_redraw) {
