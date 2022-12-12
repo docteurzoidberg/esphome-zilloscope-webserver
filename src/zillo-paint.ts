@@ -127,8 +127,6 @@ export default class ZilloPaint extends LitElement {
   @state()
   secondaryColor: string = "#000000";
   @state()
-  currentTool: string = "brush";
-  @state()
   brushSize: number = 1;
   @state()
   pixel_x: number = 0;
@@ -149,7 +147,7 @@ export default class ZilloPaint extends LitElement {
 
   ctx: any = null;
 
-  @property() selectedTool: string = "";
+  @property() selectedTool: string = "brush";
 
   selectedToolElement!: HTMLElement;
 
@@ -160,14 +158,18 @@ export default class ZilloPaint extends LitElement {
   protected firstUpdated(
     _changedProperties: Map<string | number | symbol, unknown>
   ): void {
+    console.log("firstUpdated");
     this.selectedToolElement = this.renderRoot.querySelector(
-      "[name]"
+      "[name='" + this.selectedTool + "']"
     ) as HTMLElement;
 
     this.selectedToolElement.setAttribute("selected", "");
-    console.dir(this.selectedToolElement.querySelectorAll("[type=button]"));
-
+    //console.dir(this.selectedToolElement.querySelectorAll("[type=button]"));
     console.log(this.selectedToolElement);
+    console.log(this.selectedToolElement.shadowRoot);
+    console.log(
+      this.selectedToolElement.shadowRoot?.querySelectorAll("button")
+    );
 
     this.ctx = this.canvas.getContext("2d");
 
@@ -401,6 +403,23 @@ export default class ZilloPaint extends LitElement {
 
   updated(changedProperties: Map<string, unknown>) {
     super.updated(changedProperties);
+    //console.log("updated");
+
+    this.shadowRoot?.querySelectorAll(".is_primary").forEach((element) => {
+      element.classList.remove("is-primary");
+    });
+
+    this.selectedToolElement = this.shadowRoot?.querySelector(
+      "paint-tool[name='" + this.selectedTool + "']"
+    ) as HTMLElement;
+
+    const selectedToolButton = this.selectedToolElement.querySelector(
+      "button"
+    ) as HTMLButtonElement;
+    if (selectedToolButton) {
+      console.log(selectedToolButton);
+      selectedToolButton.classList.add("is-primary");
+    }
   }
 
   connectedCallback() {
