@@ -659,8 +659,8 @@ export default class ZilloPaint extends LitElement {
                   slot="icon"
                   width="32"
                   height="32"
-                  src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAJdJREFUWIXtlEEOhCAMRR+TuRSHY8Xh4FZ1xSRMHNSKqWb6lgql/1EFx/l3wsRaoqn9mtiAihkGBECkFxDCp/TwjEcbGCZPKQGQcx6eZW7grdhzNPkQcwNHZkCb/PlfwSXJG7c2IACllO5hjBE4n7xxfwPt7mut3ctmYmetn5gb2PwTfk/72pIzDZgb2JwB5d7dmBtwHGcBx7Qxn2rRvkEAAAAASUVORK5CYII="
-                  alt="paint bucket"
+                  src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAIhJREFUWIXtlkEOgCAMBFfjtznxN761XjgYhWhpk4p2jk3ZlG0DBYK/syjO0kJrVRRggrjqlBIBIOd8jqPGRZrzOYBr71Wa8zjQ630jDzXvkfY8DuC+90Pa7g6ICyAJUmqGYQHWmM3AYfpF2u4ObFqBxs1FuDsQf0EwvBH1eN1GVEqxe7eD4JPsvt0mbk13t8AAAAAASUVORK5CYII="
+                  alt="fill"
                 />
                 <span slot="title">Fill</span>
                 <section slot="options"></section>
@@ -670,7 +670,7 @@ export default class ZilloPaint extends LitElement {
                   slot="icon"
                   width="32"
                   height="32"
-                  src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAJdJREFUWIXtlEEOhCAMRR+TuRSHY8Xh4FZ1xSRMHNSKqWb6lgql/1EFx/l3wsRaoqn9mtiAihkGBECkFxDCp/TwjEcbGCZPKQGQcx6eZW7grdhzNPkQcwNHZkCb/PlfwSXJG7c2IACllO5hjBE4n7xxfwPt7mut3ctmYmetn5gb2PwTfk/72pIzDZgb2JwB5d7dmBtwHGcBx7Qxn2rRvkEAAAAASUVORK5CYII="
+                  src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAHBJREFUWIXtkrEKwDAIBV9Lf9vJD0+mByWDlFaJUm/LorlDoGn+zhE1WEQGAKiqueuM+sBTLu+Bq7mI4P5e2V7A7QYMc3NH/QJvzUndAl/NSb0CXuakTgFvc5K/QJQ5yVsg2pzkLQBgAHHmZHuBpmkmVPFAIfAsahQAAAAASUVORK5CYII="
                   alt="line"
                 />
                 <span slot="title">Line</span>
@@ -682,6 +682,13 @@ export default class ZilloPaint extends LitElement {
                 @tool-selected="${this._onToolChanged}"
               >
                 <span slot="title">Shapes</span>
+                <img
+                  slot="icon"
+                  width="32"
+                  height="32"
+                  src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAGRJREFUWIXtlTEOgDAMAw/Eq/K3TPlbvlUWkDq0DASpA77VUmx5iEEI8Xe2meDuDSAiSgbuznVn6LWXrn/AtAGgAWRmycDMHr2WN6AACqAACqAAx0y4V6z75a/o1nCoL29ACCFOPEYQRkhdfHgAAAAASUVORK5CYII="
+                  alt="shape"
+                />
                 <section slot="options">
                   <div>shape: (//todo: options rectangle round)</div>
                   <div>fill: (//todo: checkbox)</div>
