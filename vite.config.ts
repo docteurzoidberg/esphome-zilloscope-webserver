@@ -57,19 +57,11 @@ export default defineConfig({
       enforce: "post",
       apply: "build",
     },
-    {
-      ...copy({
-        targets: [{ src: "v1/*", dest: "_static/v1" }],
-        verbose: true,
-      }),
-      enforce: "pre",
-      apply: "build",
-    },
   ],
   build: {
     brotliSize: false,
     // cssCodeSplit: true,
-    outDir: "_static/v2",
+    outDir: "_static/",
     polyfillModulePreload: false,
     rollupOptions: {
       output: {

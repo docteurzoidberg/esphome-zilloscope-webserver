@@ -1,6 +1,9 @@
 import { html, css, LitElement } from "lit";
 import { customElement, state, query, property } from "lit/decorators.js";
 
+import "./paint-tools";
+import "./paint-tool";
+
 //DOC: passer a true pour dev sans les maj zillo
 const nozillo = true;
 
@@ -146,6 +149,10 @@ export default class ZilloPaint extends LitElement {
 
   ctx: any = null;
 
+  @property() selectedTool: string = "";
+
+  selectedToolElement!: HTMLElement;
+
   constructor() {
     super();
   }
@@ -153,11 +160,20 @@ export default class ZilloPaint extends LitElement {
   protected firstUpdated(
     _changedProperties: Map<string | number | symbol, unknown>
   ): void {
+    this.selectedToolElement = this.renderRoot.querySelector(
+      "[name]"
+    ) as HTMLElement;
+
+    this.selectedToolElement.setAttribute("selected", "");
+    console.dir(this.selectedToolElement.querySelectorAll("[type=button]"));
+
+    console.log(this.selectedToolElement);
+
     this.ctx = this.canvas.getContext("2d");
 
     if (nozillo && this.width == 0 && this.height == 0) {
-      this.width = 32;
-      this.height = 8;
+      this.width = 35;
+      this.height = 25;
       this._initCanvas(this.width, this.height);
       return;
     }
@@ -337,7 +353,7 @@ export default class ZilloPaint extends LitElement {
           me._drawCanvas();
         }
       };
-      importimg.src = e.target.result;
+      importimg.src = e.target?.result as string;
     };
     reader.readAsDataURL(imageFile);
   }
@@ -503,12 +519,35 @@ export default class ZilloPaint extends LitElement {
 
   /**
    * Updates the slider prop's value.
-   * @param {EventObject} e The event object.
+   * @param {any} e The event object.
    */
-  _updateBrushValue(e: EventObject) {
+  _updateBrushValue(e: any) {
     const [element] = e.composedPath();
     console.log(element.value);
     this.brushSize = element.value;
+  }
+
+  _onToolChanged(event: Event) {
+    const target = event.target;
+    this.selectedTool = target.name;
+    this.selectedToolElement = this.renderRoot.querySelector(
+      "[name='" + this.selectedTool + "']"
+    ) as HTMLElement;
+
+    this.renderRoot.querySelectorAll("paint-tool").forEach((toolelement) => {
+      toolelement.shadowRoot
+        ?.querySelectorAll(".is-primary")
+        .forEach((buttonelement) => {
+          buttonelement.classList.remove("is-primary");
+        });
+      toolelement.removeAttribute("selected");
+    });
+    this.selectedToolElement.shadowRoot
+      .querySelector("button")
+      ?.classList.add("is-primary");
+    this.selectedToolElement.setAttribute("selected", "");
+    console.log(this.selectedTool);
+    console.log(this.selectedToolElement);
   }
 
   render() {
@@ -568,32 +607,88 @@ export default class ZilloPaint extends LitElement {
         <div class="row">
           <div id="tools">
             <h2>Tools</h2>
-            <div>
-              <div class="tool" tool="brush">
-                <h4>Brush</h4>
-                <div>size:</div>
-                <input
-                  type="range"
-                  min="1"
-                  max="5"
-                  value="1"
-                  step="2"
-                  @change=${this._updateBrushValue}
+            <paint-tools>
+              <paint-tool name="pencil" @tool-selected="${this._onToolChanged}">
+                <img
+                  slot="icon"
+                  width="32"
+                  height="32"
+                  src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAJdJREFUWIXtlEEOhCAMRR+TuRSHY8Xh4FZ1xSRMHNSKqWb6lgql/1EFx/l3wsRaoqn9mtiAihkGBECkFxDCp/TwjEcbGCZPKQGQcx6eZW7grdhzNPkQcwNHZkCb/PlfwSXJG7c2IACllO5hjBE4n7xxfwPt7mut3ctmYmetn5gb2PwTfk/72pIzDZgb2JwB5d7dmBtwHGcBx7Qxn2rRvkEAAAAASUVORK5CYII="
+                  alt="pencil"
                 />
-                <div>shape: (//todo: options square/round)</div>
-              </div>
-              <div class="tool" tool="picker">
-                <h4>Colorpicker</h4>
-              </div>
-              <div class="tool" tool="bucket"><h4>Fill</h4></div>
-              <div class="tool" tool="line"><h4>Line</h4></div>
-              <div class="tool" tool="shape">
-                <h4>Shapes</h4>
-                <div>shape: (//todo: options rectangle round)</div>
-                <div>fill: (//todo: checkbox)</div>
-                <div>border: (//todo: checkbox)</div>
-              </div>
-            </div>
+                <span slot="title">Pencil</span>
+                <section slot="options">
+                  <div>size:</div>
+                  <input
+                    type="range"
+                    min="1"
+                    max="5"
+                    value="1"
+                    step="2"
+                    @change="${this._updateBrushValue}"
+                  />
+                  <div>shape: (//todo: options square/round)</div>
+                </section>
+              </paint-tool>
+              <paint-tool name="eraser" @tool-selected="${this._onToolChanged}">
+                <img
+                  slot="icon"
+                  width="32"
+                  height="32"
+                  src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAJRJREFUWIXtlEEOAiEMRZ/GS3E4Vr0TV4Bb1VVjNIidQcNM7Fu3pe+HFIIg+HcuE73qKco5AyAi3beuEwt8hduOHgVQHQfQWgMgpTSsO1UCm8xLKa6hp0jgJ+bGoROYMhcR4OkOdPsPnQDwMPTSMR9e2+UJjLZTgFqra5BdPK+5sTyBt3/ATD7d8td6r7mxPIEgCII7QIM8GpY9O8kAAAAASUVORK5CYII="
+                  alt="eraser"
+                />
+                <span slot="title">Eraser</span>
+              </paint-tool>
+              <paint-tool
+                name="colorpicker"
+                @tool-selected="${this._onToolChanged}"
+              >
+                <img
+                  slot="icon"
+                  width="32"
+                  height="32"
+                  src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAKpJREFUWIXtlEEOwyAMBIcqn4K3ceRt8Cz3UCElKUmhAblRmRtIYHZkA5N/xwy8W2pqPQY+oIoRBgRA5CXAmLcSmw11A8uFswLgvQcghMB6XUheRN1Ajx4QgBgjAM65plq3NvCp26tqqBv4Zgo2yVNKrNfZxH46jriVgWJyay3QnjyjbqBmClqTN02WuoHqHuidPKNu4OzVpz/d1eSZ3zeQ6ZV4j7qByWTyBNagQ/hk9Pj2AAAAAElFTkSuQmCC"
+                  alt="colorpicker"
+                />
+                <span slot="title">Colorpicker</span>
+                <section slot="options"></section>
+              </paint-tool>
+              <paint-tool name="fill" @tool-selected="${this._onToolChanged}">
+                <img
+                  slot="icon"
+                  width="32"
+                  height="32"
+                  src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAJdJREFUWIXtlEEOhCAMRR+TuRSHY8Xh4FZ1xSRMHNSKqWb6lgql/1EFx/l3wsRaoqn9mtiAihkGBECkFxDCp/TwjEcbGCZPKQGQcx6eZW7grdhzNPkQcwNHZkCb/PlfwSXJG7c2IACllO5hjBE4n7xxfwPt7mut3ctmYmetn5gb2PwTfk/72pIzDZgb2JwB5d7dmBtwHGcBx7Qxn2rRvkEAAAAASUVORK5CYII="
+                  alt="paint bucket"
+                />
+                <span slot="title">Fill</span>
+                <section slot="options"></section>
+              </paint-tool>
+              <paint-tool name="line" @tool-selected="${this._onToolChanged}">
+                <img
+                  slot="icon"
+                  width="32"
+                  height="32"
+                  src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAJdJREFUWIXtlEEOhCAMRR+TuRSHY8Xh4FZ1xSRMHNSKqWb6lgql/1EFx/l3wsRaoqn9mtiAihkGBECkFxDCp/TwjEcbGCZPKQGQcx6eZW7grdhzNPkQcwNHZkCb/PlfwSXJG7c2IACllO5hjBE4n7xxfwPt7mut3ctmYmetn5gb2PwTfk/72pIzDZgb2JwB5d7dmBtwHGcBx7Qxn2rRvkEAAAAASUVORK5CYII="
+                  alt="line"
+                />
+                <span slot="title">Line</span>
+                <section slot="options"></section>
+              </paint-tool>
+              <paint-tool
+                class="tool"
+                name="shape"
+                @tool-selected="${this._onToolChanged}"
+              >
+                <span slot="title">Shapes</span>
+                <section slot="options">
+                  <div>shape: (//todo: options rectangle round)</div>
+                  <div>fill: (//todo: checkbox)</div>
+                  <div>border: (//todo: checkbox)</div>
+                </section>
+              </paint-tool>
+            </paint-tools>
           </div>
         </div>
         <div class="row">
@@ -654,6 +749,16 @@ export default class ZilloPaint extends LitElement {
 
   static get styles() {
     return css`
+      [selected] button {
+        background-color: blue;
+      }
+      paint-tool[selected] [slot="title"] {
+        font-weight: bold;
+        text-decoration: underline;
+      }
+      paint-tool:not([selected]) [slot="options"] {
+        display: none;
+      }
       h2 {
         margin: 20px;
       }
