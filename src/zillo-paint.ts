@@ -3,6 +3,9 @@ import { customElement, state, query, property } from "lit/decorators.js";
 
 import "./paint-tools";
 import "./paint-tool";
+import "./paint-imagelist";
+
+import { PaintImage } from "./paint-imagelist";
 
 //DOC: passer a true pour dev sans les maj zillo
 const nozillo = true;
@@ -159,6 +162,7 @@ export default class ZilloPaint extends LitElement {
 
   ctx: any = null;
 
+  @state() currentImage: PaintImage | null = null;
   @property() selectedTool: string = "brush";
 
   selectedToolElement!: HTMLElement;
@@ -220,6 +224,18 @@ export default class ZilloPaint extends LitElement {
     //init green
     this._clearBuffer({ r: 0, g: 255, b: 0 });
     this._drawCanvas();
+    const event = new CustomEvent("init-canvas", {
+      detail: {
+        width: width,
+        height: height,
+      },
+    });
+    window.dispatchEvent(event);
+    window.dispatchEvent(
+      new CustomEvent("drawing-update", {
+        detail: this.typedArray,
+      })
+    );
   }
 
   _clearBuffer(rgb?: rgb) {
@@ -307,6 +323,11 @@ export default class ZilloPaint extends LitElement {
     }
 
     if (should_redraw) {
+      window.dispatchEvent(
+        new CustomEvent("drawing-update", {
+          detail: this.typedArray,
+        })
+      );
       this._drawCanvas();
     }
   }
@@ -618,6 +639,49 @@ export default class ZilloPaint extends LitElement {
     console.log(this.selectedToolElement);
   }
 
+  sendNewImageEvent() {
+    console.log("dispatch event");
+    window.dispatchEvent(
+      new CustomEvent("new-image", {
+        detail: {
+          width: this.width,
+          height: this.height,
+        },
+      })
+    );
+  }
+
+  sendImportImageEvent() {
+    window.dispatchEvent(new CustomEvent("import-image"));
+  }
+
+  sendExportImageEvent() {
+    window.dispatchEvent(new CustomEvent("export-image"));
+  }
+
+  handleImageListChange(e: CustomEvent) {
+    console.log("image-changed");
+    const img = e.detail as PaintImage;
+    this.currentImage = img;
+    const ctx = img.canvas.getContext("2d");
+    if (!ctx) return;
+    const imageData = ctx.getImageData(
+      0,
+      0,
+      img.canvas.width,
+      img.canvas.height
+    );
+
+    //convert imageData to uint8buffer
+    for (let i = 0; i < this.typedArray.length; i += 4) {
+      this.typedArray[i + 0] = imageData?.data[i + 0];
+      this.typedArray[i + 1] = imageData?.data[i + 1];
+      this.typedArray[i + 2] = imageData?.data[i + 2];
+      this.typedArray[i + 3] = 0;
+    }
+    this._drawCanvas();
+  }
+
   render() {
     return html`<link
         href="http://unpkg.com/nes.css/css/nes-core.min.css"
@@ -818,6 +882,29 @@ export default class ZilloPaint extends LitElement {
             accept="image/*"
             @change="${this.handleImport}"
           />
+        </div>
+        <div class="row">
+          <div>
+            <h3>current image id:</h3>
+            ${this.currentImage?.id}
+          </div>
+          <div>
+            <h3>current image data:</h3>
+            ${this.currentImage?.canvas.toDataURL()}
+          </div>
+          <div>
+            <button type="button" @click="${this.sendNewImageEvent}">
+              New image
+            </button>
+            <button type="button" @click="${this.sendImportImageEvent}">
+              Import
+            </button>
+            <button type="button" @click="${this.sendExportImageEvent}">
+              Export
+            </button>
+          </div>
+          <paint-imagelist @image-changed="${this.handleImageListChange}">
+          </paint-imagelist>
         </div>
       </div>`;
   }
