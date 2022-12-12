@@ -247,6 +247,38 @@ export default class ZilloPaint extends LitElement {
     return false;
   }
 
+  _startUseTool(tool: string, x: number, y: number, button: number) {
+    console.log("start using " + tool);
+    if (!this.drawing) {
+      this.drawing = true;
+      this.drawingColorPrimary = button == 2 ? false : true;
+      this._useTool(tool, x, y);
+    }
+  }
+
+  _useTool(tool: string, x: number, y: number) {
+    console.log(`using ${tool} at ${x},${y}`);
+    let should_redraw = false;
+
+    if (tool == "brush") {
+      const rgb = hexToRgb(
+        this.drawingColorPrimary ? this.primaryColor : this.secondaryColor
+      );
+      should_redraw = this._useBrush(x, y, rgb, this.brushSize);
+    } else if (tool == "eraser") {
+      const rgb = hexToRgb("#000000");
+      should_redraw = this._useBrush(x, y, rgb, this.brushSize);
+    }
+
+    if (should_redraw) {
+      this._drawCanvas();
+    }
+  }
+
+  _endUseTool() {
+    console.log("stop using " + this.selectedTool);
+  }
+
   // use current brush to se pixels
   _useBrush(x: number, y: number, rgb: any, size: number) {
     if (size == 1) {
@@ -277,24 +309,15 @@ export default class ZilloPaint extends LitElement {
   //start painting
   handleCanvasMouseDown(e: MouseEvent) {
     if (e.button === 1) return;
-    if (!this.drawing) {
-      this.drawing = true;
-      this.drawingColorPrimary = e.button == 2 ? false : true;
-    }
     const x = this.pixel_x - 1;
     const y = this.pixel_y - 1;
-    const rgb = hexToRgb(
-      this.drawingColorPrimary ? this.primaryColor : this.secondaryColor
-    );
-    const should_redraw = this._useBrush(x, y, rgb, this.brushSize);
-    if (should_redraw) {
-      this._drawCanvas();
-    }
+    this._startUseTool(this.selectedTool, x, y, e.button);
   }
 
   //release painting
   handleCanvasMouseUp() {
     this.drawing = false;
+    this._endUseTool();
   }
 
   handleCanvasMouseMove(e: MouseEvent) {
@@ -307,19 +330,11 @@ export default class ZilloPaint extends LitElement {
     if (this.pixel_y < 1) this.pixel_y = 1;
     if (this.pixel_x > this.width) this.pixel_x = this.width;
     if (this.pixel_y > this.height) this.pixel_y = this.height;
-
     if (!this.drawing) return;
 
-    const rgb = hexToRgb(
-      this.drawingColorPrimary ? this.primaryColor : this.secondaryColor
-    );
     const x = this.pixel_x - 1;
     const y = this.pixel_y - 1;
-    const should_redraw = this._useBrush(x, y, rgb, this.brushSize);
-    if (should_redraw) {
-      this._drawCanvas();
-      this.callSetPixel(x, y, rgb);
-    }
+    this._useTool(this.selectedTool, x, y);
   }
 
   handleCanvasMouseOut(e: MouseEvent) {
@@ -608,7 +623,7 @@ export default class ZilloPaint extends LitElement {
           <div id="tools">
             <h2>Tools</h2>
             <paint-tools>
-              <paint-tool name="pencil" @tool-selected="${this._onToolChanged}">
+              <paint-tool name="brush" @tool-selected="${this._onToolChanged}">
                 <img
                   slot="icon"
                   width="32"
