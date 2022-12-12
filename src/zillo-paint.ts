@@ -316,7 +316,7 @@ export default class ZilloPaint extends LitElement {
   }
 
   // use current brush to se pixels
-  _useBrush(x: number, y: number, rgb: any, size: number) {
+  _useBrush(x: number, y: number, rgb: rgb, size: number) {
     if (size == 1) {
       return this._paintPixel(x, y, rgb);
     }
@@ -463,7 +463,7 @@ export default class ZilloPaint extends LitElement {
     });
   }
 
-  callSetPixel(x: number, y: number, rgb: any) {
+  callSetPixel(x: number, y: number, rgb: rgb) {
     return;
     fetch(
       `${basePath}/setpixel/?x=${x}&y=${y}&r=${rgb.r}&g=${rgb.g}&b=${rgb.b}`,
