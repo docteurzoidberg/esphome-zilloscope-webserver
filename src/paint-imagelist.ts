@@ -1,5 +1,5 @@
 import { LitElement, html, css } from "lit";
-import { customElement, state, property } from "lit/decorators.js";
+import { customElement, query, state, property } from "lit/decorators.js";
 
 export interface PaintImage {
   canvas: HTMLCanvasElement;
@@ -13,20 +13,50 @@ const getUniqueID = () => {
 @customElement("paint-imagelist")
 export class PaintImageList extends LitElement {
   static styles = css`
+    #importimage {
+      display: none;
+    }
     [is-selected="true"] {
-      border: 4px solid blue;
+      border: 6px solid rgb(16, 141, 224);
+    }
+    ul {
+      margin: 0;
+      padding: 0;
     }
     li {
       list-style: none;
     }
+    :host {
+      //position: absolute;
+      //top: 40px;
+    }
+    img {
+      image-rendering: -moz-crisp-edges;
+      image-rendering: -moz-crisp-edges;
+      image-rendering: -o-crisp-edges;
+      image-rendering: -webkit-optimize-contrast;
+      -ms-interpolation-mode: nearest-neighbor;
+      image-rendering: pixelated;
+    }
   `;
+
+  @query("#importimage")
+  importimage!: HTMLInputElement;
 
   @state() imageList: Array<PaintImage> = [];
   @state() currentImage: PaintImage | null = null;
+
+  //preview size
   @state() previewWidth: number = 64;
   @state() previewHeight: number = 64;
 
+  //size for new images (after init)
+  @property() imagesWidth: number = 0;
+  @property() imagesHeight: number = 0;
+
   _initImageList(width: number, height: number) {
+    this.imagesWidth = width;
+    this.imagesHeight = height;
     console.log("initImageList");
     this.addImage(width, height, true);
     //this.requestUpdate();
@@ -40,7 +70,7 @@ export class PaintImageList extends LitElement {
     return null;
   }
 
-  addImage(width: number, height: number, isinit: bool = false) {
+  addImage(width: number, height: number, isinit: boolean = false) {
     const newcanvas = document.createElement("canvas") as HTMLCanvasElement;
     newcanvas.width = width;
     newcanvas.height = height;
@@ -88,6 +118,50 @@ export class PaintImageList extends LitElement {
     );
   }
 
+  handleFileInputChange(e: Event) {
+    if (!this.importimage?.files) return;
+    let imageFile = this.importimage.files[0];
+    var reader = new FileReader();
+    const me = this;
+    reader.onload = function (e) {
+      var importimg = document.createElement("img");
+      importimg.onload = function () {
+        // Dynamically create a canvas element
+        me.addImage(me.imagesWidth, me.imagesHeight, true);
+        if (!me.currentImage) return;
+        const importctx = me.currentImage?.canvas.getContext("2d");
+        if (!importctx) {
+          console.log("Could not get context");
+          return;
+        }
+        importctx.imageSmoothingEnabled = false;
+        importctx.clearRect(0, 0, me.imagesWidth, me.imagesHeight);
+        importctx.drawImage(importimg, 0, 0, me.imagesWidth, me.imagesHeight);
+        me.dispatchEvent(
+          new CustomEvent("image-changed", { detail: me.currentImage })
+        );
+      };
+      importimg.src = e.target?.result as string;
+    };
+    reader.readAsDataURL(imageFile);
+  }
+
+  handleNewImageClick() {
+    this.addImage(this.imagesWidth, this.imagesHeight);
+  }
+
+  handleImportImageClick() {
+    this.importimage?.click();
+  }
+
+  handleExportImageClick() {
+    if (!this.currentImage) return;
+    const anchor = document.createElement("a");
+    anchor.href = this.currentImage.canvas.toDataURL("image/png");
+    anchor.download = "IMAGE.PNG";
+    anchor.click();
+  }
+
   constructor() {
     super();
     window.addEventListener("init-canvas", (e: Event) => {
@@ -125,30 +199,31 @@ export class PaintImageList extends LitElement {
       console.log("drawing-updated");
       this.requestUpdate();
     });
+    //window.addEventListener("new-image", (e: Event) => {
+    //  const customEvent = e as CustomEvent;
+    //  console.log("new-image", customEvent.detail);
+    //  this.addImage(customEvent.detail.width, customEvent.detail.height);
+    //  //this.requestUpdate();
+    //   console.dir(this.imageList);
+    //});
   }
 
   protected firstUpdated(
     _changedProperties: Map<string | number | symbol, unknown>
   ): void {
-    window.addEventListener("new-image", (e: Event) => {
-      const customEvent = e as CustomEvent;
-      console.log("new-image", customEvent.detail);
-      this.addImage(customEvent.detail.width, customEvent.detail.height);
-      //this.requestUpdate();
-      console.dir(this.imageList);
-    });
-
-    //console.log("imageList FirstUpdated");
-    //if (this.imageList.length === 0) {
-    //this._initImageList(10, 10);
-    //}
+    console.log("ImageList FirstUpdated");
   }
 
   renderRemoveBtn(id: string) {
     if (this.imageList.length > 1)
       return html`
-        <button type="button" image-id=${id} @click=${this.removeImage}>
-          remove
+        <button
+          class="nes-btn btn is-error"
+          type="button"
+          image-id=${id}
+          @click=${this.removeImage}
+        >
+          -
         </button>
       `;
     else return html``;
@@ -171,9 +246,44 @@ export class PaintImageList extends LitElement {
   }
   render() {
     return html`
-      <ul>
-        ${this.renderImageList()}
-      </ul>
+      <link
+        href="http://unpkg.com/nes.css/css/nes-core.min.css"
+        rel="stylesheet"
+      />
+      <input
+        id="importimage"
+        type="file"
+        accept="image/png"
+        @change="${this.handleFileInputChange}"
+      />
+      <div class="buttons">
+        <button
+          class="nes-btn btn new-btn is-primary"
+          type="button"
+          @click="${this.handleNewImageClick}"
+        >
+          New
+        </button>
+        <button
+          class="nes-btn btn import-btn"
+          type="button"
+          @click="${this.handleImportImageClick}"
+        >
+          Import
+        </button>
+        <button
+          class="nes-btn btn export-btn"
+          type="button"
+          @click="${this.handleExportImageClick}"
+        >
+          Export
+        </button>
+      </div>
+      <div>
+        <ul>
+          ${this.renderImageList()}
+        </ul>
+      </div>
     `;
   }
 }

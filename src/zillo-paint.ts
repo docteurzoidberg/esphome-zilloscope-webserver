@@ -79,6 +79,7 @@ interface rgb {
   r: number;
   g: number;
   b: number;
+  short: string;
 }
 
 const rgbToHex = (rgb: rgb) => {
@@ -87,7 +88,7 @@ const rgbToHex = (rgb: rgb) => {
     ((1 << 24) | (rgb.r << 16) | (rgb.g << 8) | rgb.b).toString(16).slice(1)
   );
 };
-const hexToRgb = (hex: string) => {
+const hexToRgb = (hex: string): rgb => {
   var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   return result
     ? {
@@ -102,7 +103,12 @@ const hexToRgb = (hex: string) => {
           "," +
           parseInt(result[3], 16),
       }
-    : null;
+    : {
+        r: 0,
+        g: 0,
+        b: 0,
+        short: "00,00,00",
+      };
 };
 
 const colorPalette = nesPalette.map((color) => {
@@ -126,8 +132,6 @@ let basePath = getBasePath();
 export default class ZilloPaint extends LitElement {
   @query("#canvas")
   canvas!: HTMLCanvasElement;
-  @query("#importimage")
-  importimage!: HTMLInputElement;
 
   @state()
   width: number = 0;
@@ -190,8 +194,8 @@ export default class ZilloPaint extends LitElement {
     this.ctx = this.canvas.getContext("2d");
 
     if (nozillo && this.width == 0 && this.height == 0) {
-      this.width = 35;
-      this.height = 25;
+      this.width = 16;
+      this.height = 16;
       this._initCanvas(this.width, this.height);
       return;
     }
@@ -222,7 +226,7 @@ export default class ZilloPaint extends LitElement {
     this.canvas.width = this.canvasWidth;
     this.canvas.height = this.canvasHeight;
     //init green
-    this._clearBuffer({ r: 0, g: 255, b: 0 });
+    this._clearBuffer(hexToRgb("#00FF00"));
     this._drawCanvas();
     const event = new CustomEvent("init-canvas", {
       detail: {
@@ -240,7 +244,7 @@ export default class ZilloPaint extends LitElement {
 
   _clearBuffer(rgb?: rgb) {
     //default: black
-    if (!rgb) rgb = { r: 0, g: 0, b: 0 };
+    if (!rgb) rgb = hexToRgb("#000000");
     for (let i = 0; i < this.typedArray.length; i += 4) {
       this.typedArray[i + 0] = rgb.r;
       this.typedArray[i + 1] = rgb.g;
@@ -267,11 +271,12 @@ export default class ZilloPaint extends LitElement {
     const r = this.typedArray[index];
     const g = this.typedArray[index + 1];
     const b = this.typedArray[index + 2];
-    if (r != rgb?.r || g != rgb?.g || b != rgb?.b) {
-      this.typedArray[index] = rgb?.r;
-      this.typedArray[index + 1] = rgb?.g;
-      this.typedArray[index + 2] = rgb?.b;
+    if (r != rgb.r || g != rgb.g || b != rgb.b) {
+      this.typedArray[index] = rgb.r;
+      this.typedArray[index + 1] = rgb.g;
+      this.typedArray[index + 2] = rgb.b;
       this.typedArray[index + 3] = 0;
+      this.callSetPixel(x, y, rgb);
       return true;
     }
     return false;
@@ -336,7 +341,7 @@ export default class ZilloPaint extends LitElement {
     console.log("stop using " + this.selectedTool);
   }
 
-  // use current brush to se pixels
+  // use current brush to set pixels
   _useBrush(x: number, y: number, rgb: rgb, size: number) {
     if (size == 1) {
       return this._paintPixel(x, y, rgb);
@@ -398,64 +403,6 @@ export default class ZilloPaint extends LitElement {
     //this.drawing = false;
   }
 
-  handleImport(e: Event) {
-    if (!this.importimage?.files) return;
-    let imageFile = this.importimage.files[0];
-    var reader = new FileReader();
-    const me = this;
-    reader.onload = function (e) {
-      var importimg = document.createElement("img");
-      importimg.onload = function () {
-        // Dynamically create a canvas element
-        const importcanvas = document.createElement("canvas");
-        const importctx = importcanvas.getContext("2d");
-        if (!importctx) {
-          console.log("Could not get context");
-          return;
-        }
-        importctx.imageSmoothingEnabled = false;
-        importctx.clearRect(0, 0, me.width, me.height);
-        importctx.drawImage(importimg, 0, 0, me.width, me.height);
-        const imagedata = importctx.getImageData(0, 0, me.width, me.height);
-        for (let i = 0; i < imagedata.data.length; i += 4) {
-          me.typedArray[i + 0] = imagedata.data[i + 0];
-          me.typedArray[i + 1] = imagedata.data[i + 1];
-          me.typedArray[i + 2] = imagedata.data[i + 2];
-          me.typedArray[i + 3] = 0;
-          me._drawCanvas();
-        }
-      };
-      importimg.src = e.target?.result as string;
-    };
-    reader.readAsDataURL(imageFile);
-  }
-
-  handleExport() {
-    const importcanvas = document.createElement("canvas");
-    importcanvas.width = this.width;
-    importcanvas.height = this.height;
-    const importctx = importcanvas.getContext("2d");
-    if (!importctx) {
-      console.log("Could not get context");
-      return;
-    }
-
-    const imagedata = importctx.createImageData(this.width, this.height);
-    for (let i = 0; i < imagedata.data.length; i += 4) {
-      imagedata.data[i + 0] = this.typedArray[i + 0];
-      imagedata.data[i + 1] = this.typedArray[i + 1];
-      imagedata.data[i + 2] = this.typedArray[i + 2];
-      imagedata.data[i + 3] = 255;
-    }
-
-    importctx.putImageData(imagedata, 0, 0);
-
-    const anchor = document.createElement("a");
-    anchor.href = importcanvas.toDataURL("image/png");
-    anchor.download = "IMAGE.PNG";
-    anchor.click();
-  }
-
   updated(changedProperties: Map<string, unknown>) {
     super.updated(changedProperties);
     //console.log("updated");
@@ -477,15 +424,8 @@ export default class ZilloPaint extends LitElement {
     }
   }
 
-  connectedCallback() {
-    super.connectedCallback();
-    window.source.addEventListener("state", (e: Event) => {
-      //console.dir(e);
-    });
-  }
-
   callSetPixel(x: number, y: number, rgb: rgb) {
-    return;
+    //return;
     fetch(
       `${basePath}/setpixel/?x=${x}&y=${y}&r=${rgb.r}&g=${rgb.g}&b=${rgb.b}`,
       {
@@ -572,10 +512,6 @@ export default class ZilloPaint extends LitElement {
     this._drawCanvas();
   }
 
-  importFile() {
-    this.importimage?.click();
-  }
-
   renderPalette() {
     return colorPalette.map(
       (color) =>
@@ -651,14 +587,6 @@ export default class ZilloPaint extends LitElement {
     );
   }
 
-  sendImportImageEvent() {
-    window.dispatchEvent(new CustomEvent("import-image"));
-  }
-
-  sendExportImageEvent() {
-    window.dispatchEvent(new CustomEvent("export-image"));
-  }
-
   handleImageListChange(e: CustomEvent) {
     console.log("image-changed");
     const img = e.detail as PaintImage;
@@ -688,56 +616,8 @@ export default class ZilloPaint extends LitElement {
         rel="stylesheet"
       />
       <div>
-        <div class="row">
-          <div id="display">
-            <h2>Display</h2>
-            <canvas
-              id="canvas"
-              oncontextmenu="return false;"
-              @mouseup="${this.handleCanvasMouseUp}"
-              @mousedown="${this.handleCanvasMouseDown}"
-              @mousemove="${this.handleCanvasMouseMove}"
-              @mouseleave="${this.handleCanvasMouseOut}"
-            ></canvas>
-            <div>
-              <span id="coords">X:${this.pixel_x},${this.pixel_y}</span>
-            </div>
-          </div>
-        </div>
-        <div class="row">
-          <div id="maincolors">
-            <div id="primary">
-              <h3>Primary</h3>
-              <span
-                class="color"
-                style="background-color: ${this.primaryColor}"
-                id="primarycolor"
-              ></span>
-              <span>hex:</span>
-              <span class="hex">${this.renderHexColor(this.primaryColor)}</span>
-              <span>rgb:</span>
-              <span class="rgb">${this.renderRgbColor(this.primaryColor)}</span>
-            </div>
-            <div id="secondary">
-              <h3>Secondary</h3>
-              <span
-                class="color"
-                style="background-color: ${this.secondaryColor}"
-                id="secondarycolor"
-              ></span>
-              <span>hex:</span>
-              <span class="hex"
-                >${this.renderHexColor(this.secondaryColor)}</span
-              >
-              <span>rgb:</span>
-              <span class="rgb"
-                >${this.renderRgbColor(this.secondaryColor)}</span
-              >
-            </div>
-          </div>
-        </div>
-        <div class="row">
-          <div id="tools">
+        <div class="row" id="toolsrow">
+          <div class="col" id="tools">
             <h2>Tools</h2>
             <paint-tools>
               <paint-tool name="brush" @tool-selected="${this._onToolChanged}">
@@ -829,15 +709,7 @@ export default class ZilloPaint extends LitElement {
               </paint-tool>
             </paint-tools>
           </div>
-        </div>
-        <div class="row">
-          <div id="palette">
-            <h2>Palette</h2>
-            <div id="colors">${this.renderPalette()}</div>
-          </div>
-        </div>
-        <div class="row">
-          <div>
+          <div class="col" id="controls">
             <h2>Controls</h2>
             <div id="controls">
               <button
@@ -857,55 +729,75 @@ export default class ZilloPaint extends LitElement {
               <button class="nes nes-btn is-disabled" type="button" disabled>
                 RECV
               </button>
-
-              <button
-                class="nes nes-btn"
-                type="button"
-                @click="${this.importFile}"
-              >
-                IMPORT
-              </button>
-              <button
-                class="nes nes-btn"
-                type="button"
-                @click="${this.handleExport}"
-              >
-                EXPORT
-              </button>
             </div>
           </div>
         </div>
-        <div class="row">
-          <input
-            type="file"
-            id="importimage"
-            accept="image/*"
-            @change="${this.handleImport}"
-          />
+
+        <div class="row" id="canvasrow">
+          <div id="display" class="col">
+            <h2>Display</h2>
+            <canvas
+              id="canvas"
+              oncontextmenu="return false;"
+              @mouseup="${this.handleCanvasMouseUp}"
+              @mousedown="${this.handleCanvasMouseDown}"
+              @mousemove="${this.handleCanvasMouseMove}"
+              @mouseleave="${this.handleCanvasMouseOut}"
+            ></canvas>
+            <div>
+              <span id="coords">X:${this.pixel_x},${this.pixel_y}</span>
+            </div>
+          </div>
+          <div id="files" class="col">
+            <h2>Files</h2>
+
+            <paint-imagelist
+              id="imagelist"
+              @image-changed="${this.handleImageListChange}"
+            >
+            </paint-imagelist>
+          </div>
         </div>
-        <div class="row">
-          <div>
-            <h3>current image id:</h3>
-            ${this.currentImage?.id}
+
+        <div class="row" id="paletterow">
+          <div id="maincolors" class="col">
+            <h2>Colors</h2>
+            <div id="primary">
+              <h3>Primary</h3>
+              <span
+                class="color"
+                style="background-color: ${this.primaryColor}"
+                id="primarycolor"
+              ></span>
+              <span>hex:</span>
+              <span class="hex">${this.renderHexColor(this.primaryColor)}</span>
+              <span>rgb:</span>
+              <span class="rgb">${this.renderRgbColor(this.primaryColor)}</span>
+            </div>
+            <div id="secondary">
+              <h3>Secondary</h3>
+              <span
+                class="color"
+                style="background-color: ${this.secondaryColor}"
+                id="secondarycolor"
+              ></span>
+              <span>hex:</span>
+              <span class="hex"
+                >${this.renderHexColor(this.secondaryColor)}</span
+              >
+              <span>rgb:</span>
+              <span class="rgb"
+                >${this.renderRgbColor(this.secondaryColor)}</span
+              >
+            </div>
           </div>
-          <div>
-            <h3>current image data:</h3>
-            ${this.currentImage?.canvas.toDataURL()}
+          <div id="palette" class="col">
+            <h2>Palette</h2>
+            <div id="colors">${this.renderPalette()}</div>
           </div>
-          <div>
-            <button type="button" @click="${this.sendNewImageEvent}">
-              New image
-            </button>
-            <button type="button" @click="${this.sendImportImageEvent}">
-              Import
-            </button>
-            <button type="button" @click="${this.sendExportImageEvent}">
-              Export
-            </button>
-          </div>
-          <paint-imagelist @image-changed="${this.handleImageListChange}">
-          </paint-imagelist>
         </div>
+
+        <div class="row"></div>
       </div>`;
   }
 
@@ -969,12 +861,68 @@ export default class ZilloPaint extends LitElement {
         width: 75px;
         display: inline-block;
       }
-      #importimage {
-        display: none;
-      }
+
       #tools h4 {
         text-decoration: underline;
         margin-top: 4px;
+      }
+      //#imagelist {
+      //  position: absolute;
+      //  left: 500px;
+      //}
+      .row {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        justify-content: flex-start;
+        align-content: stretch;
+        align-items: flex-start;
+        border: 4px solid red;
+      }
+      .col {
+        border: 4px solid;
+      }
+
+      #toolsrow:nth-child(1) {
+        order: 0;
+        flex: 1 1 auto;
+        align-self: stretch;
+      }
+
+      #toolsrow:nth-child(2) {
+        order: 0;
+        flex: 0 1 auto;
+        align-self: stretch;
+      }
+
+      #canvasrow:nth-child(1) {
+        order: 0;
+        flex: 1 1 auto;
+        align-self: stretch;
+      }
+
+      #canvasrow:nth-child(2) {
+        order: 0;
+        flex: 0 1 auto;
+        align-self: stretch;
+      }
+
+      #paletterow:nth-child(1) {
+        order: 0;
+        flex: 0 1 auto;
+        align-self: stretch;
+      }
+
+      #paletterow:nth-child(2) {
+        order: 0;
+        flex: 1 1 auto;
+        align-self: stretch;
+      }
+
+      :host {
+        pointer-events: auto;
+        cursor: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABFklEQVRYR9WXURLDIAhE6/0PbSdOtUpcd1Gnpv1KGpTHBpCE1/cXq+vrMph7dGvXZTtpfW10DCA5jrH1H0Jhs5E0hnZdCR+vb5S8Nn8mQCeS9BdSalYJqMBjAGzq59xAESN7VFVUgV8AZB/dZBR7QTFDCqGquvUBVVoEtgIwpQRzmANSFHgWQKExHdIrPeuMvQNDarXe6nC/AutgV3JW+6bgqQLeV8FekRtgV+ToDKEKnACYKsfZjjkam7a0ZpYTytwmgainpC3HvwBocgKOxqRjehoR9DFKNFYtOwCGYCszobeCbl26N6yyQ6g8X/Wex/rBPsNEV6qAMaJPMynIHQCoSqS9JSMmwef51LflTgCRszU7DvAGiV6mHWfsaVUAAAAASUVORK5CYII=),
+          auto;
       }
     `;
   }

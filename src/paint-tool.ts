@@ -11,7 +11,11 @@ export default class PaintTool extends LitElement {
   }
 
   static get styles() {
-    return css``;
+    return css`
+      .tools div {
+        background-color: cyan;
+      }
+    `;
   }
 
   render() {
@@ -20,14 +24,12 @@ export default class PaintTool extends LitElement {
         href="http://unpkg.com/nes.css/css/nes-core.min.css"
         rel="stylesheet"
       />
-      <div>
-        <button type="button" class="nes nes-btn" @click="${this._onSelect}">
-          <slot name="icon"></slot>
-        </button>
 
-        <slot name="title" @click="${this._onSelect}">${this.name}</slot>
-        <slot name="options"></slot>
-      </div>
+      <button type="button" class="nes nes-btn" @click="${this._onSelect}">
+        <slot name="icon"></slot>
+      </button>
+
+      <slot name="options"></slot>
     `;
   }
 }
