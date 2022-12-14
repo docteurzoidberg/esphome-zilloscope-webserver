@@ -293,6 +293,13 @@ export default class ZilloPaint extends LitElement {
       r: this.typedArray[index],
       g: this.typedArray[index + 1],
       b: this.typedArray[index + 2],
+      short:
+        "" +
+        this.typedArray[index] +
+        "," +
+        this.typedArray[index + 1] +
+        "," +
+        this.typedArray[index + 2],
     };
   }
 
@@ -553,7 +560,7 @@ export default class ZilloPaint extends LitElement {
   }
 
   _onToolChanged(event: Event) {
-    const target = event.target;
+    const target = event.target as any;
     this.selectedTool = target.name;
     this.selectedToolElement = this.renderRoot.querySelector(
       "[name='" + this.selectedTool + "']"
@@ -567,9 +574,13 @@ export default class ZilloPaint extends LitElement {
         });
       toolelement.removeAttribute("selected");
     });
-    this.selectedToolElement.shadowRoot
-      .querySelector("button")
-      ?.classList.add("is-primary");
+
+    if (this.selectedToolElement.shadowRoot) {
+      this.selectedToolElement.shadowRoot
+        .querySelector("button")
+        ?.classList.add("is-primary");
+    }
+
     this.selectedToolElement.setAttribute("selected", "");
     console.log(this.selectedTool);
     console.log(this.selectedToolElement);

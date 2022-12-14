@@ -98,7 +98,7 @@ export default class EspApp extends LitElement {
       let basePath = getBasePath();
       return html`<h2>OTA Update</h2>
         <form
-          method="POST"
+          method="post"
           action="${basePath}/update"
           enctype="multipart/form-data"
         >
@@ -113,7 +113,7 @@ export default class EspApp extends LitElement {
       <h1>
         <esp-logo></esp-logo>
         ${this.config.title}
-        <img id="beat" src="/logo.png" title="${this.version}" />
+        <img id="beat" src="/logo.png" title="${this.version as string}" />
       </h1>
       <zillo-tabs>
         <h2 slot="tab">PAINT</h2>

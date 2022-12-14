@@ -26,10 +26,6 @@ export class PaintImageList extends LitElement {
     li {
       list-style: none;
     }
-    :host {
-      //position: absolute;
-      //top: 40px;
-    }
     img {
       image-rendering: -moz-crisp-edges;
       image-rendering: -moz-crisp-edges;
@@ -58,8 +54,7 @@ export class PaintImageList extends LitElement {
     this.imagesWidth = width;
     this.imagesHeight = height;
     console.log("initImageList");
-    this.addImage(width, height, true);
-    //this.requestUpdate();
+    this._addImage(width, height, true);
   }
   _getImageById(id: string | null): PaintImage | null {
     if (!id) return null;
@@ -70,7 +65,7 @@ export class PaintImageList extends LitElement {
     return null;
   }
 
-  addImage(width: number, height: number, isinit: boolean = false) {
+  _addImage(width: number, height: number, isinit: boolean = false) {
     const newcanvas = document.createElement("canvas") as HTMLCanvasElement;
     newcanvas.width = width;
     newcanvas.height = height;
@@ -86,7 +81,6 @@ export class PaintImageList extends LitElement {
       this.dispatchEvent(
         new CustomEvent("image-changed", { detail: newimage })
       );
-    //this.requestUpdate();
   }
 
   selectImage(e: Event) {
@@ -111,7 +105,7 @@ export class PaintImageList extends LitElement {
       this.currentImage = this.imageList[this.imageList.length - 1];
     }
     if (this.imageList.length === 0) {
-      this.addImage();
+      this._addImage(this.imagesWidth, this.imagesHeight);
     }
     this.dispatchEvent(
       new CustomEvent("image-changed", { detail: this.currentImage })
@@ -127,7 +121,7 @@ export class PaintImageList extends LitElement {
       var importimg = document.createElement("img");
       importimg.onload = function () {
         // Dynamically create a canvas element
-        me.addImage(me.imagesWidth, me.imagesHeight, true);
+        me._addImage(me.imagesWidth, me.imagesHeight, true);
         if (!me.currentImage) return;
         const importctx = me.currentImage?.canvas.getContext("2d");
         if (!importctx) {
@@ -147,7 +141,7 @@ export class PaintImageList extends LitElement {
   }
 
   handleNewImageClick() {
-    this.addImage(this.imagesWidth, this.imagesHeight);
+    this._addImage(this.imagesWidth, this.imagesHeight);
   }
 
   handleImportImageClick() {
@@ -199,13 +193,6 @@ export class PaintImageList extends LitElement {
       console.log("drawing-updated");
       this.requestUpdate();
     });
-    //window.addEventListener("new-image", (e: Event) => {
-    //  const customEvent = e as CustomEvent;
-    //  console.log("new-image", customEvent.detail);
-    //  this.addImage(customEvent.detail.width, customEvent.detail.height);
-    //  //this.requestUpdate();
-    //   console.dir(this.imageList);
-    //});
   }
 
   protected firstUpdated(
