@@ -153,6 +153,8 @@ export default class ZilloPaint extends LitElement {
   @state()
   brushSize: number = 1;
   @state()
+  eraserSize: number = 1;
+  @state()
   pixel_x: number = 0;
   @state()
   pixel_y: number = 0;
@@ -277,7 +279,7 @@ export default class ZilloPaint extends LitElement {
 
   //set typedArray pixel's byte from rgb color
   _paintPixel(x: number, y: number, rgb: rgb) {
-    if (x >= this.width || x < 0 || y >= this.height || y < 0) {
+    if (x > this.width || x < 0 || y > this.height || y < 0) {
       console.log(`invalid coordinates: x: ${x} y: ${y}`);
       return false;
     }
@@ -385,6 +387,7 @@ export default class ZilloPaint extends LitElement {
   _shouldToolPreview() {
     if (this.selectedTool == "brush") return true;
     if (this.selectedTool == "eraser") return true;
+    if (this.selectedTool == "colorpicker") return true;
     return false;
   }
 
@@ -457,7 +460,7 @@ export default class ZilloPaint extends LitElement {
   }
 
   callSetPixel(x: number, y: number, rgb: rgb) {
-    if (!nozillo) return;
+    if (nozillo) return;
     fetch(
       `${basePath}/setpixel/?x=${x}&y=${y}&r=${rgb.r}&g=${rgb.g}&b=${rgb.b}`,
       {
@@ -469,7 +472,7 @@ export default class ZilloPaint extends LitElement {
   }
 
   callSetBuffer() {
-    if (!nozillo) return;
+    if (nozillo) return;
     const data = new Blob([this.arrayBuffer], {
       type: "octet/stream",
     });
@@ -482,7 +485,7 @@ export default class ZilloPaint extends LitElement {
   }
 
   callGetBuffer() {
-    if (!nozillo) return;
+    if (nozillo) return;
     fetch(`${basePath}/getbuffer`, {
       method: "GET",
     }).then((r) => {
@@ -504,6 +507,12 @@ export default class ZilloPaint extends LitElement {
     if (this.toolpreview) {
       if (this.selectedTool == "brush") {
         toolpixels = this._getBrushPixels(tool_x, tool_y, this.brushSize);
+      }
+      if (this.selectedTool == "eraser") {
+        toolpixels = this._getBrushPixels(tool_x, tool_y, this.eraserSize);
+      }
+      if (this.selectedTool == "colorpicker") {
+        toolpixels = [{ x: tool_x, y: tool_y }];
       }
     }
 
@@ -547,14 +556,15 @@ export default class ZilloPaint extends LitElement {
         //draw scaled pixel rect
         ctx.fillRect(canvasX, canvasY, canvasScale, canvasScale);
 
+        //preview tool path
         if (this.toolpreview) {
           let pixel = toolpixels.filter((pixel) => {
             return pixel.x == x && pixel.y == y;
           });
 
           if (pixel.length > 0) {
-            //ctx.fillStyle = "rgba(255,0,0,0.2)";
-            //ctx.fillRect(canvasX, canvasY, canvasScale, canvasScale);
+            ctx.fillStyle = "rgba(255,0,0,0.2)";
+            ctx.fillRect(canvasX, canvasY, canvasScale, canvasScale);
             ctx.lineWidth = canvasBorderWidth;
             ctx.strokeStyle = "rgba(255,0,0,1)";
             ctx.strokeRect(canvasX, canvasY, canvasScale, canvasScale);
@@ -565,13 +575,86 @@ export default class ZilloPaint extends LitElement {
     }
   }
 
+  _getCirclePixels(x: number, y: number, radius: number): Array<pixelcoord> {
+    if (radius == 1) {
+      return [{ x: x, y: y }];
+    }
+    if (radius == 2) {
+      return [
+        { x: x - 1, y: y },
+        { x: x, y: y },
+        { x: x - 1, y: y - 1 },
+        { x: x, y: y - 1 },
+      ];
+    }
+    if (radius == 3) {
+      return [
+        { x: x, y: y },
+        { x: x - 1, y: y },
+        { x: x + 1, y: y },
+        { x: x, y: y + 1 },
+        { x: x, y: y - 1 },
+      ];
+    }
+    if (radius == 5) {
+      return [
+        { x: x, y: y },
+        { x: x - 1, y: y },
+        { x: x + 1, y: y },
+        { x: x, y: y + 1 },
+        { x: x, y: y - 1 },
+        { x: x - 2, y: y },
+        { x: x + 2, y: y },
+        { x: x - 1, y: y + 1 },
+        { x: x + 1, y: y + 1 },
+        { x: x - 1, y: y - 1 },
+        { x: x + 1, y: y - 1 },
+        { x: x, y: y + 2 },
+        { x: x, y: y - 2 },
+      ];
+    }
+
+    // Initialisez les variables de l'algorithme
+    let d = 3 - 2 * radius;
+    let xi = 0;
+    let yi = radius;
+
+    // Créez un tableau pour stocker les pixels de la forme
+    const pixels = [];
+
+    // Parcourez les pixels autour du centre du cercle
+    // en utilisant l'algorithme de tracé de cercle de Bresenham
+    while (xi <= yi) {
+      // Ajoutez les pixels du cercle pour chaque octant
+      pixels.push({ x: x + xi, y: y + yi });
+      pixels.push({ x: x + yi, y: y + xi });
+      pixels.push({ x: x - xi, y: y + yi });
+      pixels.push({ x: x - yi, y: y + xi });
+      pixels.push({ x: x - xi, y: y - yi });
+      pixels.push({ x: x - yi, y: y - xi });
+      pixels.push({ x: x + xi, y: y - yi });
+      pixels.push({ x: x + yi, y: y - xi });
+
+      // Mettez à jour les variables de l'algorithme
+      if (d < 0) {
+        d += 4 * xi + 6;
+      } else {
+        d += 4 * (xi - yi) + 10;
+        yi--;
+      }
+      xi++;
+    }
+
+    return pixels;
+  }
+
   _getBrushPixels(
     x: number,
     y: number,
     size: number,
-    shape: string = "square"
+    shape: string = "circle"
   ): Array<pixelcoord> {
-    const pixels: Array<pixelcoord> = [];
+    let pixels: Array<pixelcoord> = [];
     if (shape == "square") {
       if (size == 1) {
         return [{ x: x, y: y }];
@@ -581,9 +664,11 @@ export default class ZilloPaint extends LitElement {
           const nx = x + px;
           const ny = y + py;
           if (nx < 0 || ny < 0 || nx > this.width || ny > this.height) continue;
-          pixels.push({ x: x + px, y: y + py });
+          pixels.push({ x: nx, y: ny });
         }
       }
+    } else if (shape == "circle") {
+      pixels = this._getCirclePixels(x, y, size);
     }
     return pixels;
   }
@@ -627,14 +712,16 @@ export default class ZilloPaint extends LitElement {
       });
   }
 
-  /**
-   * Updates the slider prop's value.
-   * @param {any} e The event object.
-   */
-  _updateBrushValue(e: any) {
+  _updateBrushSize(e: any) {
     const [element] = e.composedPath();
     console.log(element.value);
     this.brushSize = element.value;
+  }
+
+  _updateEraserSize(e: any) {
+    const [element] = e.composedPath();
+    console.log(element.value);
+    this.eraserSize = element.value;
   }
 
   _onToolChanged(event: Event) {
@@ -718,14 +805,14 @@ export default class ZilloPaint extends LitElement {
                 />
                 <span slot="title">Pencil</span>
                 <section slot="options">
-                  <div>size:</div>
+                  <div>size: ${this.brushSize}</div>
                   <input
                     type="range"
                     min="1"
                     max="5"
                     value="1"
-                    step="2"
-                    @change="${this._updateBrushValue}"
+                    step="1"
+                    @change="${this._updateBrushSize}"
                   />
                   <div>shape: (//todo: options square/round)</div>
                 </section>
@@ -739,6 +826,18 @@ export default class ZilloPaint extends LitElement {
                   alt="eraser"
                 />
                 <span slot="title">Eraser</span>
+                <section slot="options">
+                  <div>size:</div>
+                  <input
+                    type="range"
+                    min="1"
+                    max="5"
+                    value="1"
+                    step="2"
+                    @change="${this._updateEraserSize}"
+                  />
+                  <div>shape: (//todo: options square/round)</div>
+                </section>
               </paint-tool>
               <paint-tool
                 name="colorpicker"
