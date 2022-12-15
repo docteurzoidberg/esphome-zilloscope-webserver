@@ -7,6 +7,7 @@ import "./esp-log";
 import "./esp-switch";
 import "./esp-logo";
 import "./zillo-paint";
+import "./zillo-render-simulator";
 import "./zillo-tabs";
 
 window.source = new EventSource(getBasePath() + "/events");
@@ -123,9 +124,20 @@ export default class EspApp extends LitElement {
             height="${this.height}"
           ></zillo-paint>
         </section>
+        <h2 slot="tab">SIMULATOR</h2>
+        <section slot="panel">
+          <zillo-render-simulator
+            width="${this.width}"
+            height="${this.height}"
+          ></zillo-render-simulator>
+        </section>
         <h2 slot="tab">ENTITIES</h2>
         <section slot="panel">
           <esp-entity-table></esp-entity-table>
+        </section>
+        <h2 slot="tab">LOGS</h2>
+        <section slot="panel">
+          <esp-log rows="50"></esp-log>
         </section>
         <h2 slot="tab">SETTINGS</h2>
         <section slot="panel">
@@ -144,13 +156,8 @@ export default class EspApp extends LitElement {
             </esp-switch>
             Scheme
           </h2>
+          <div>${this.ota()}</div>
         </section>
-        <h2 slot="tab">LOGS</h2>
-        <section slot="panel">
-          <esp-log rows="50"></esp-log>
-        </section>
-        <h2 slot="tab">OTA</h2>
-        <section slot="panel">${this.ota()}</section>
       </zillo-tabs>
     `;
   }

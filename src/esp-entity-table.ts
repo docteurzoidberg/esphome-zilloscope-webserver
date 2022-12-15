@@ -12,14 +12,14 @@ interface entityConfig {
   when: string;
   icon?: string;
   option?: string[];
-  brightness?: Number;
-  target_temperature?: Number;
-  target_temperature_low?: Number;
-  target_temperature_high?: Number;
-  current_temperature?: Number;
-  mode?: Number;
-  speed_count?: Number;
-  speed_level?: Number;
+  brightness?: number;
+  target_temperature?: number;
+  target_temperature_low?: number;
+  target_temperature_high?: number;
+  current_temperature?: number;
+  mode?: number;
+  speed_count?: number;
+  speed_level?: number;
   speed: string;
 }
 
@@ -78,18 +78,19 @@ export class EntityTable extends LitElement {
   select(
     entity: entityConfig,
     action: string,
-    opt: String,
-    options: String[],
+    opt: string,
+    options: string[],
     val: string
   ) {
     return html`<select
       @change="${(e: Event) => {
-        let val = e.target?.value;
+        const target = e.target as HTMLSelectElement;
+        let val = target.value;
         this.restAction(entity, `${action}?${opt}=${encodeURIComponent(val)}`);
       }}"
     >
       ${options.map(
-        (option) =>
+        (option: string) =>
           html`
             <option value="${option}" ?selected="${option == val}">
               ${option}
@@ -102,11 +103,11 @@ export class EntityTable extends LitElement {
   range(
     entity: entityConfig,
     action: string,
-    opt: String,
-    value: Number,
-    min: Number,
-    max: Number,
-    step: Number
+    opt: string,
+    value: number,
+    min: number,
+    max: number,
+    step: number
   ) {
     return html`<div class="range">
       <label>${min || 0}</label>
@@ -119,8 +120,8 @@ export class EntityTable extends LitElement {
         max="${max}"
         value="${value}"
         @change="${(e: Event) => {
-          let val = e.target?.value;
-          this.restAction(entity, `${action}?${opt}=${val}`);
+          const target = e.target as HTMLInputElement;
+          this.restAction(entity, `${action}?${opt}=${target.value}`);
         }}"
       />
       <label>${max || 100}</label>
@@ -152,7 +153,7 @@ export class EntityTable extends LitElement {
               entity,
               `turn_${entity.state.toLowerCase()}`,
               "speed_level",
-              entity.speed_level,
+              entity.speed_level as number,
               0,
               entity.speed_count,
               1

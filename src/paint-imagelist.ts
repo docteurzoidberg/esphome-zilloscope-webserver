@@ -56,6 +56,7 @@ export class PaintImageList extends LitElement {
     console.log("initImageList");
     this._addImage(width, height, true);
   }
+
   _getImageById(id: string | null): PaintImage | null {
     if (!id) return null;
     const imgs = this.imageList.filter((image: PaintImage) => {
@@ -231,6 +232,7 @@ export class PaintImageList extends LitElement {
       </li>`;
     });
   }
+
   render() {
     return html`
       <link

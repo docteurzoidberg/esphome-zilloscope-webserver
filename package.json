@@ -1,5 +1,5 @@
 {
-  "name": "esphome-webserver",
+  "name": "esphome-zillo-webserver",
   "version": "2.0.5",
   "main": "index.js",
   "license": "MIT",
@@ -8,8 +8,7 @@
     "dev": "vite",
     "build": "vite build && npm run deploy",
     "serve": "vite preview",
-    "deploy": "bash -c './scripts/make_header.sh _static server_index.h web_server'",
-    "build-v1": ""
+    "deploy": "bash -c './scripts/make_header.sh _static server_index.h web_server'"
   },
   "dependencies": {
     "http-proxy-middleware": "^2.0.1",

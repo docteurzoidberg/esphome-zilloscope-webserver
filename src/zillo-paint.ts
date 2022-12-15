@@ -82,6 +82,11 @@ interface rgb {
   short: string;
 }
 
+interface pixelcoord {
+  x: number;
+  y: number;
+}
+
 const rgbToHex = (rgb: rgb) => {
   return (
     "#" +
@@ -161,6 +166,7 @@ export default class ZilloPaint extends LitElement {
   mouse_x: number = 0;
   mouse_y: number = 0;
 
+  toolpreview = false;
   drawing = false;
   drawingColorPrimary = false;
 
@@ -216,6 +222,14 @@ export default class ZilloPaint extends LitElement {
   _initCanvas(width: number, height: number) {
     this.width = width;
     this.height = height;
+
+    const event = new CustomEvent("init-canvas", {
+      detail: {
+        width: width,
+        height: height,
+      },
+    });
+
     this.arrayBuffer = new ArrayBuffer(width * height * 4);
     this.typedArray = new Uint8Array(this.arrayBuffer);
 
@@ -225,15 +239,11 @@ export default class ZilloPaint extends LitElement {
     this.calcScaleY = this.canvasHeight / height;
     this.canvas.width = this.canvasWidth;
     this.canvas.height = this.canvasHeight;
+
     //init green
     this._clearBuffer(hexToRgb("#00FF00"));
-    this._drawCanvas();
-    const event = new CustomEvent("init-canvas", {
-      detail: {
-        width: width,
-        height: height,
-      },
-    });
+    this._drawCanvas(0);
+
     window.dispatchEvent(event);
     window.dispatchEvent(
       new CustomEvent("drawing-update", {
@@ -252,13 +262,17 @@ export default class ZilloPaint extends LitElement {
       this.typedArray[i + 3] = 0;
     }
   }
-  _drawCanvas() {
+
+  _drawCanvas(ts: number) {
     if (this.ctx) {
       this.ctx.save();
       this.ctx.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
       this.draw();
       this.ctx.restore();
     }
+    requestAnimationFrame((ts: number) => {
+      this._drawCanvas(ts);
+    });
   }
 
   //set typedArray pixel's byte from rgb color
@@ -340,7 +354,6 @@ export default class ZilloPaint extends LitElement {
           detail: this.typedArray,
         })
       );
-      this._drawCanvas();
     }
   }
 
@@ -350,17 +363,29 @@ export default class ZilloPaint extends LitElement {
 
   // use current brush to set pixels
   _useBrush(x: number, y: number, rgb: rgb, size: number) {
-    if (size == 1) {
-      return this._paintPixel(x, y, rgb);
-    }
+    //if (size == 1) {
+    //  return this._paintPixel(x, y, rgb);
+    //}
     let redraw = false;
+    const pixels = this._getBrushPixels(x, y, size);
+    pixels.forEach((pixel) => {
+      if (this._paintPixel(pixel.x, pixel.y, rgb)) redraw = true;
+    });
+    /*
     for (let i = -Math.floor(size / 2); i < size - 1; i++) {
       for (let j = -Math.floor(size / 2); j < size - 1; j++) {
         //todo: avoid calling paintpixel when bad coordinates
         if (this._paintPixel(x + i, y + j, rgb)) redraw = true;
       }
     }
+    */
     return redraw;
+  }
+
+  _shouldToolPreview() {
+    if (this.selectedTool == "brush") return true;
+    if (this.selectedTool == "eraser") return true;
+    return false;
   }
 
   //handle palette's color mouse left/right clicks
@@ -390,17 +415,16 @@ export default class ZilloPaint extends LitElement {
   }
 
   handleCanvasMouseMove(e: MouseEvent) {
+    this.toolpreview = this._shouldToolPreview();
     this.mouse_x = e.offsetX;
     this.mouse_y = e.offsetY;
     this.pixel_x = Math.ceil(this.mouse_x / this.calcScaleX);
     this.pixel_y = Math.ceil(this.mouse_y / this.calcScaleY);
-
     if (this.pixel_x < 1) this.pixel_x = 1;
     if (this.pixel_y < 1) this.pixel_y = 1;
     if (this.pixel_x > this.width) this.pixel_x = this.width;
     if (this.pixel_y > this.height) this.pixel_y = this.height;
     if (!this.drawing) return;
-
     const x = this.pixel_x - 1;
     const y = this.pixel_y - 1;
     this._useTool(this.selectedTool, x, y);
@@ -408,6 +432,7 @@ export default class ZilloPaint extends LitElement {
 
   handleCanvasMouseOut(e: MouseEvent) {
     //this.drawing = false;
+    this.toolpreview = false;
   }
 
   updated(changedProperties: Map<string, unknown>) {
@@ -432,7 +457,7 @@ export default class ZilloPaint extends LitElement {
   }
 
   callSetPixel(x: number, y: number, rgb: rgb) {
-    //return;
+    if (!nozillo) return;
     fetch(
       `${basePath}/setpixel/?x=${x}&y=${y}&r=${rgb.r}&g=${rgb.g}&b=${rgb.b}`,
       {
@@ -444,7 +469,7 @@ export default class ZilloPaint extends LitElement {
   }
 
   callSetBuffer() {
-    //console.log(this.typedArray);
+    if (!nozillo) return;
     const data = new Blob([this.arrayBuffer], {
       type: "octet/stream",
     });
@@ -457,6 +482,7 @@ export default class ZilloPaint extends LitElement {
   }
 
   callGetBuffer() {
+    if (!nozillo) return;
     fetch(`${basePath}/getbuffer`, {
       method: "GET",
     }).then((r) => {
@@ -466,26 +492,18 @@ export default class ZilloPaint extends LitElement {
 
   draw() {
     const ctx = this.ctx;
+    const tool_x = this.pixel_x - 1;
+    const tool_y = this.pixel_y - 1;
+    let toolpixels: Array<pixelcoord> = [];
 
     //fill with white backgound (for transparency)
     ctx.fillStyle = "white";
     ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
 
-    //drawing buffer to canvas
-    for (let x = 0; x < this.width; x++) {
-      for (let y = 0; y < this.height; y++) {
-        // get color from buffer
-        const pixelIndex = (y * this.width + x) * 4;
-        const dataview = new DataView(this.arrayBuffer);
-        const r = dataview.getUint8(pixelIndex);
-        const g = dataview.getUint8(pixelIndex + 1);
-        const b = dataview.getUint8(pixelIndex + 2);
-        //put pixel color but at 0.9 alpha on canvas
-        ctx.fillStyle = "rgba(" + r + "," + g + "," + b + ", 0.9)";
-        const canvasX = x * canvasScale + canvasBorderWidth * (x + 1);
-        const canvasY = y * canvasScale + canvasBorderWidth * (y + 1);
-        //draw scaled pixel rect
-        ctx.fillRect(canvasX, canvasY, canvasScale, canvasScale);
+    //draw tool preview?
+    if (this.toolpreview) {
+      if (this.selectedTool == "brush") {
+        toolpixels = this._getBrushPixels(tool_x, tool_y, this.brushSize);
       }
     }
 
@@ -512,11 +530,71 @@ export default class ZilloPaint extends LitElement {
       ctx.lineTo(this.canvasWidth, y);
       ctx.stroke();
     }
+
+    //drawing buffer to canvas
+    for (let x = 0; x < this.width; x++) {
+      for (let y = 0; y < this.height; y++) {
+        // get color from buffer
+        const pixelIndex = (y * this.width + x) * 4;
+        const dataview = new DataView(this.arrayBuffer);
+        const r = dataview.getUint8(pixelIndex);
+        const g = dataview.getUint8(pixelIndex + 1);
+        const b = dataview.getUint8(pixelIndex + 2);
+        //put pixel color but at 0.9 alpha on canvas
+        ctx.fillStyle = "rgba(" + r + "," + g + "," + b + ", 0.9)";
+        const canvasX = x * canvasScale + canvasBorderWidth * (x + 1);
+        const canvasY = y * canvasScale + canvasBorderWidth * (y + 1);
+        //draw scaled pixel rect
+        ctx.fillRect(canvasX, canvasY, canvasScale, canvasScale);
+
+        if (this.toolpreview) {
+          let pixel = toolpixels.filter((pixel) => {
+            return pixel.x == x && pixel.y == y;
+          });
+
+          if (pixel.length > 0) {
+            //ctx.fillStyle = "rgba(255,0,0,0.2)";
+            //ctx.fillRect(canvasX, canvasY, canvasScale, canvasScale);
+            ctx.lineWidth = canvasBorderWidth;
+            ctx.strokeStyle = "rgba(255,0,0,1)";
+            ctx.strokeRect(canvasX, canvasY, canvasScale, canvasScale);
+            //todo: tester si ya des 'pixels voisins' et ne dessiner que les bordures exterieures a la forme
+          }
+        }
+      }
+    }
+  }
+
+  _getBrushPixels(
+    x: number,
+    y: number,
+    size: number,
+    shape: string = "square"
+  ): Array<pixelcoord> {
+    const pixels: Array<pixelcoord> = [];
+    if (shape == "square") {
+      if (size == 1) {
+        return [{ x: x, y: y }];
+      }
+      for (let px = -Math.floor(size / 2); px < size - 1; px++) {
+        for (let py = -Math.floor(size / 2); py < size - 1; py++) {
+          const nx = x + px;
+          const ny = y + py;
+          if (nx < 0 || ny < 0 || nx > this.width || ny > this.height) continue;
+          pixels.push({ x: x + px, y: y + py });
+        }
+      }
+    }
+    return pixels;
   }
 
   clearCanvas() {
     this._clearBuffer();
-    this._drawCanvas();
+    window.dispatchEvent(
+      new CustomEvent("drawing-update", {
+        detail: this.typedArray,
+      })
+    );
   }
 
   renderPalette() {
@@ -618,7 +696,6 @@ export default class ZilloPaint extends LitElement {
       this.typedArray[i + 2] = imageData?.data[i + 2];
       this.typedArray[i + 3] = 0;
     }
-    this._drawCanvas();
   }
 
   render() {
@@ -888,10 +965,10 @@ export default class ZilloPaint extends LitElement {
         justify-content: flex-start;
         align-content: stretch;
         align-items: flex-start;
-        border: 4px solid red;
+        //border: 4px solid red;
       }
       .col {
-        border: 4px solid;
+        //border: 4px solid;
       }
 
       #toolsrow:nth-child(1) {
