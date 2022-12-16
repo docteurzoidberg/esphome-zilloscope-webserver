@@ -71,8 +71,6 @@ export default class ZilloRenderSimulator extends LitElement {
   typedArray!: Uint8Array;
 
   _initCanvas(width: number, height: number) {
-    this.displayWidth = width;
-    this.displayHeight = height;
     this.arrayBuffer = new ArrayBuffer(width * height * 4);
     this.typedArray = new Uint8Array(this.arrayBuffer);
     this.canvasWidth = width * canvasScale + canvasBorderWidth * (width + 1);

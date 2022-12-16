@@ -187,6 +187,7 @@ export default class ZilloPaint extends LitElement {
     _changedProperties: Map<string | number | symbol, unknown>
   ): void {
     console.log("firstUpdated");
+    console.log(this._getFilledCirclePixels(8, 8, 1));
     this.selectedToolElement = this.renderRoot.querySelector(
       "[name='" + this.selectedTool + "']"
     ) as HTMLElement;
@@ -339,7 +340,7 @@ export default class ZilloPaint extends LitElement {
       should_redraw = this._useBrush(x, y, rgb, this.brushSize);
     } else if (tool == "eraser") {
       const rgb = hexToRgb("#000000");
-      should_redraw = this._useBrush(x, y, rgb, this.brushSize);
+      should_redraw = this._useBrush(x, y, rgb, this.eraserSize);
     } else if (tool == "colorpicker") {
       const rgb = this._getPixel(x, y);
       if (!rgb) return;
@@ -365,22 +366,11 @@ export default class ZilloPaint extends LitElement {
 
   // use current brush to set pixels
   _useBrush(x: number, y: number, rgb: rgb, size: number) {
-    //if (size == 1) {
-    //  return this._paintPixel(x, y, rgb);
-    //}
     let redraw = false;
     const pixels = this._getBrushPixels(x, y, size);
     pixels.forEach((pixel) => {
       if (this._paintPixel(pixel.x, pixel.y, rgb)) redraw = true;
     });
-    /*
-    for (let i = -Math.floor(size / 2); i < size - 1; i++) {
-      for (let j = -Math.floor(size / 2); j < size - 1; j++) {
-        //todo: avoid calling paintpixel when bad coordinates
-        if (this._paintPixel(x + i, y + j, rgb)) redraw = true;
-      }
-    }
-    */
     return redraw;
   }
 
@@ -562,7 +552,7 @@ export default class ZilloPaint extends LitElement {
             return pixel.x == x && pixel.y == y;
           });
 
-          if (pixel.length > 0) {
+          if (pixel.length >= 1) {
             ctx.fillStyle = "rgba(255,0,0,0.2)";
             ctx.fillRect(canvasX, canvasY, canvasScale, canvasScale);
             ctx.lineWidth = canvasBorderWidth;
@@ -575,79 +565,55 @@ export default class ZilloPaint extends LitElement {
     }
   }
 
-  _getCirclePixels(x: number, y: number, radius: number): Array<pixelcoord> {
-    if (radius == 1) {
-      return [{ x: x, y: y }];
-    }
-    if (radius == 2) {
-      return [
-        { x: x - 1, y: y },
-        { x: x, y: y },
-        { x: x - 1, y: y - 1 },
-        { x: x, y: y - 1 },
-      ];
-    }
-    if (radius == 3) {
-      return [
-        { x: x, y: y },
-        { x: x - 1, y: y },
-        { x: x + 1, y: y },
-        { x: x, y: y + 1 },
-        { x: x, y: y - 1 },
-      ];
-    }
-    if (radius == 5) {
-      return [
-        { x: x, y: y },
-        { x: x - 1, y: y },
-        { x: x + 1, y: y },
-        { x: x, y: y + 1 },
-        { x: x, y: y - 1 },
-        { x: x - 2, y: y },
-        { x: x + 2, y: y },
-        { x: x - 1, y: y + 1 },
-        { x: x + 1, y: y + 1 },
-        { x: x - 1, y: y - 1 },
-        { x: x + 1, y: y - 1 },
-        { x: x, y: y + 2 },
-        { x: x, y: y - 2 },
-      ];
-    }
-
-    // Initialisez les variables de l'algorithme
-    let d = 3 - 2 * radius;
-    let xi = 0;
-    let yi = radius;
-
-    // Créez un tableau pour stocker les pixels de la forme
-    const pixels = [];
-
-    // Parcourez les pixels autour du centre du cercle
-    // en utilisant l'algorithme de tracé de cercle de Bresenham
-    while (xi <= yi) {
-      // Ajoutez les pixels du cercle pour chaque octant
-      pixels.push({ x: x + xi, y: y + yi });
-      pixels.push({ x: x + yi, y: y + xi });
-      pixels.push({ x: x - xi, y: y + yi });
-      pixels.push({ x: x - yi, y: y + xi });
-      pixels.push({ x: x - xi, y: y - yi });
-      pixels.push({ x: x - yi, y: y - xi });
-      pixels.push({ x: x + xi, y: y - yi });
-      pixels.push({ x: x + yi, y: y - xi });
-
-      // Mettez à jour les variables de l'algorithme
-      if (d < 0) {
-        d += 4 * xi + 6;
-      } else {
-        d += 4 * (xi - yi) + 10;
-        yi--;
-      }
-      xi++;
-    }
-
+  _getHorizontalLinePixels(x: number, y: number, w: number): Array<pixelcoord> {
+    let pixels = [];
+    // Future: Could be made more efficient by manipulating buffer directly in certain rotations.
+    for (let i = x; i < x + w; i++) pixels.push({ x: i, y: y } as pixelcoord);
     return pixels;
   }
 
+  _getVerticalLinePixels(x: number, y: number, h: number): Array<pixelcoord> {
+    let pixels = [];
+    // Future: Could be made more efficient by manipulating buffer directly in certain rotations.
+    for (let i = y; i < y + h; i++) pixels.push({ x: x, y: i } as pixelcoord);
+    return pixels;
+  }
+
+  _getFilledCirclePixels(center_x: number, center_y: number, radius: number) {
+    let dx = -radius;
+    let dy = 0;
+    let err = 2 - 2 * radius;
+    let e2;
+    let pixels = [];
+    do {
+      pixels.push({ x: center_x - dx, y: center_y + dy });
+      pixels.push({ x: center_x + dx, y: center_y + dy });
+      pixels.push({ x: center_x + dx, y: center_y - dy });
+      pixels.push({ x: center_x - dx, y: center_y - dy });
+      let hline_width = 2 * -dx + 1;
+      this._getHorizontalLinePixels(
+        center_x + dx,
+        center_y + dy,
+        hline_width
+      ).forEach((pixel) => pixels.push(pixel));
+      this._getHorizontalLinePixels(
+        center_x + dx,
+        center_y - dy,
+        hline_width
+      ).forEach((pixel) => pixels.push(pixel));
+      e2 = err;
+      if (e2 < dy) {
+        err += ++dy * 2 + 1;
+        if (-dx == dy && e2 <= dx) {
+          e2 = 0;
+        }
+      }
+      if (e2 > dx) {
+        err += ++dx * 2 + 1;
+      }
+    } while (dx <= 0);
+    return pixels;
+  }
   _getBrushPixels(
     x: number,
     y: number,
@@ -668,7 +634,7 @@ export default class ZilloPaint extends LitElement {
         }
       }
     } else if (shape == "circle") {
-      pixels = this._getCirclePixels(x, y, size);
+      pixels = this._getFilledCirclePixels(x, y, size);
     }
     return pixels;
   }
