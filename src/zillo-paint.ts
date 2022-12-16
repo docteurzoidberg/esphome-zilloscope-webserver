@@ -167,6 +167,9 @@ export default class ZilloPaint extends LitElement {
 
   selectedToolElement!: HTMLElement;
 
+  // Drawing tools helpers
+  currentLine: Uint8Array;
+
   constructor() {
     super();
   }
@@ -190,8 +193,8 @@ export default class ZilloPaint extends LitElement {
     this.ctx = this.canvas.getContext("2d");
 
     if (nozillo && this.width == 0 && this.height == 0) {
-      this.width = 35;
-      this.height = 25;
+      this.width = 32;
+      this.height = 8;
       this._initCanvas(this.width, this.height);
       return;
     }
@@ -214,6 +217,7 @@ export default class ZilloPaint extends LitElement {
     this.height = height;
     this.arrayBuffer = new ArrayBuffer(width * height * 4);
     this.typedArray = new Uint8Array(this.arrayBuffer);
+    this.currentLine = new Uint8Array(this.arrayBuffer);
 
     this.canvasWidth = width * canvasScale + canvasBorderWidth * (width + 1);
     this.canvasHeight = height * canvasScale + canvasBorderWidth * (height + 1);
@@ -277,6 +281,39 @@ export default class ZilloPaint extends LitElement {
     return false;
   }
 
+  //set typedArray pixel's byte from rgb color
+  _paintLine(
+    start_x: number,
+    start_y: number,
+    end_x: number,
+    end_y: number,
+    rgb: rgb
+  ) {
+    const x_length = end_x - start_x;
+    const y_step = (end_y - start_y) / (end_x - start_x);
+    for (let i = 0; i < x_length; i++) {
+      this._paintPixel(start_x + i, start_y + i * y_step, rgb);
+    }
+
+    /*
+    if (x >= this.width || x < 0 || y >= this.height || y < 0) {
+      console.log(`invalid coordinates: x: ${x} y: ${y}`);
+      return false;
+    }
+    const index = (y * this.width + x) * 4;
+    const r = this.typedArray[index];
+    const g = this.typedArray[index + 1];
+    const b = this.typedArray[index + 2];
+    if (r != rgb?.r || g != rgb?.g || b != rgb?.b) {
+      this.typedArray[index] = rgb?.r;
+      this.typedArray[index + 1] = rgb?.g;
+      this.typedArray[index + 2] = rgb?.b;
+      this.typedArray[index + 3] = 0;
+      return true;
+    }
+    return false;*/
+  }
+
   //get color from typedArray pixel's
   _getPixel(x: number, y: number): rgb | null {
     if (x >= this.width || x < 0 || y >= this.height || y < 0) {
@@ -295,7 +332,7 @@ export default class ZilloPaint extends LitElement {
     console.log("start using " + tool);
     if (!this.drawing) {
       this.drawing = true;
-      this.drawingColorPrimary = button == 2 ? false : true;
+      this.drawingColorPrimary = button == 1;
       this._useTool(tool, x, y);
     }
   }
@@ -303,23 +340,55 @@ export default class ZilloPaint extends LitElement {
   _useTool(tool: string, x: number, y: number) {
     console.log(`using ${tool} at ${x},${y}`);
     let should_redraw = false;
+    //let rgb = { r: 0, g: 0, b: 0, short: "" };
+    let rgb = null;
 
-    if (tool == "brush") {
-      const rgb = hexToRgb(
-        this.drawingColorPrimary ? this.primaryColor : this.secondaryColor
-      );
-      should_redraw = this._useBrush(x, y, rgb, this.brushSize);
-    } else if (tool == "eraser") {
-      const rgb = hexToRgb("#000000");
-      should_redraw = this._useBrush(x, y, rgb, this.brushSize);
-    } else if (tool == "colorpicker") {
-      const rgb = this._getPixel(x, y);
-      if (!rgb) return;
-      if (this.drawingColorPrimary) {
-        this.primaryColor = rgbToHex(rgb);
-      } else {
-        this.secondaryColor = rgbToHex(rgb);
-      }
+    switch (tool) {
+      case "brush":
+        rgb = hexToRgb(
+          this.drawingColorPrimary ? this.primaryColor : this.secondaryColor
+        );
+        if (!rgb) return;
+        should_redraw = this._useBrush(x, y, rgb, this.brushSize);
+        break;
+
+      case "eraser":
+        rgb = hexToRgb("#000000");
+        if (!rgb) return;
+        should_redraw = this._useBrush(x, y, rgb, this.brushSize);
+        break;
+
+      case "colorpicker":
+        rgb = this._getPixel(x, y);
+        if (!rgb) return;
+        if (this.drawingColorPrimary) {
+          this.primaryColor = rgbToHex(rgb);
+        } else {
+          this.secondaryColor = rgbToHex(rgb);
+        }
+        break;
+
+      case "line":
+        console.log("on utilise l'outil line");
+        console.log(this.currentLine, "this.currentline");
+        if (!this.currentLine[0]) {
+
+        }
+          ? (this.currentLine[1] = y)
+          : (this.currentLine[0] = x);
+
+        console.log(this.currentLine[0], "this.currentline 0");
+        console.log(this.currentLine[1], "this.currentline 1");
+
+        if (this.currentLine[1]) {
+          // on a les deux coordonnées pour faire la ligne
+          rgb = hexToRgb(this.primaryColor);
+          if (!rgb) return;
+          should_redraw = this._useBrush(x, y, rgb, this.brushSize);
+        }
+        break;
+
+      default:
     }
 
     if (should_redraw) {
@@ -336,7 +405,7 @@ export default class ZilloPaint extends LitElement {
     console.log("stop using " + this.selectedTool);
   }
 
-  // use current brush to se pixels
+  // use current brush to set pixels
   _useBrush(x: number, y: number, rgb: rgb, size: number) {
     if (size == 1) {
       return this._paintPixel(x, y, rgb);
@@ -349,6 +418,19 @@ export default class ZilloPaint extends LitElement {
       }
     }
     return redraw;
+  }
+
+  // use current tool to draw line
+  _useLiner(
+    start_x: number,
+    start_y: number,
+    end_x: number,
+    end_y: number,
+    rgb: rgb
+  ) {
+    // Size handling to add?
+
+    return this._paintLine(start_x, start_y, end_x, end_y, rgb);
   }
 
   //handle palette's color mouse left/right clicks
