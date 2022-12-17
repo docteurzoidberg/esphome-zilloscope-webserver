@@ -670,6 +670,7 @@ export default class ZilloPaint extends LitElement {
         return html`${v}<br />`;
       });
   }
+
   renderRgbColor(hex: string) {
     return hexToRgb(hex)
       ?.short.split(",")
