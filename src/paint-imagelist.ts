@@ -171,8 +171,8 @@ export class PaintImageList extends LitElement {
       const newImageBinary = customEvent.detail as Uint8Array;
       if (!newImageBinary) return;
 
-      console.log("drawing-update");
-      console.dir(newImageBinary);
+      //console.log("drawing-update");
+      //console.dir(newImageBinary);
       const canvas = this.currentImage.canvas;
       if (!canvas) return;
 
@@ -191,7 +191,7 @@ export class PaintImageList extends LitElement {
         imageData.data[i + 3] = 255;
       }
       ctx.putImageData(imageData, 0, 0);
-      console.log("drawing-updated");
+      //console.log("drawing-updated");
       this.requestUpdate();
     });
   }

@@ -8,7 +8,7 @@ import "./paint-imagelist";
 import { PaintImage } from "./paint-imagelist";
 
 //DOC: passer a true pour dev sans les maj zillo
-const nozillo = true;
+const nozillo = false;
 
 const canvasScale = 20;
 const canvasBorderWidth = 4;
@@ -278,9 +278,52 @@ export default class ZilloPaint extends LitElement {
     });
   }
 
+  _pixelsToSend: Array<any> = [];
+  _lastSendCall: number = 0;
+
+  _checkSend() {
+    if (this._lastSendCall == 0) this._lastSendCall = Date.now();
+
+    if (Date.now() - this._lastSendCall < 1000) {
+      window.setTimeout(() => {
+        this._checkSend();
+      }, 10);
+      return;
+    }
+
+    if (this._pixelsToSend.length == 0) return;
+
+    //todo: depuis une liste de coordonnee, definir son perimetre (x,y,w,h)
+    //puis l'index et la longueur des data a envoyer
+
+    let minX = this.width;
+    let minY = this.height;
+    let maxX = 0;
+    let maxY = 0;
+    this._pixelsToSend.forEach((pixeltosend) => {
+      if (pixeltosend.x < minX) minX = pixeltosend.x;
+      if (pixeltosend.y < minY) minY = pixeltosend.y;
+      if (pixeltosend.x > maxX) maxX = pixeltosend.x;
+      if (pixeltosend.y > maxY) maxY = pixeltosend.y;
+      console.log(pixeltosend);
+    });
+    console.log(minX, minY, maxX, maxY);
+    this._pixelsToSend = [];
+    this._lastSendCall = Date.now();
+    this.callSetBuffer();
+    window.setTimeout(() => {
+      this._checkSend();
+    }, 100);
+  }
+
+  _sendPixelQueue(pixel: pixelcoord, color: rgb) {
+    this._pixelsToSend.push({ x: pixel.x, y: pixel.y, color: color });
+    this._checkSend();
+  }
+
   //set typedArray pixel's byte from rgb color
   _paintPixel(x: number, y: number, rgb: rgb) {
-    if (x > this.width || x < 0 || y > this.height || y < 0) {
+    if (x >= this.width || x < 0 || y >= this.height || y < 0) {
       console.log(`invalid coordinates: x: ${x} y: ${y}`);
       return false;
     }
@@ -293,7 +336,8 @@ export default class ZilloPaint extends LitElement {
       this.typedArray[index + 1] = rgb.g;
       this.typedArray[index + 2] = rgb.b;
       this.typedArray[index + 3] = 0;
-      this.callSetPixel(x, y, rgb);
+      this._sendPixelQueue({ x: x, y: y }, rgb);
+      //this.callSetPixel(x, y, rgb);
       return true;
     }
     return false;
@@ -321,7 +365,7 @@ export default class ZilloPaint extends LitElement {
   }
 
   _startUseTool(tool: string, x: number, y: number, button: number) {
-    console.log("start using " + tool);
+    //console.log("start using " + tool);
     if (!this.drawing) {
       this.drawing = true;
       this.drawingColorPrimary = button == 2 ? false : true;
@@ -330,7 +374,7 @@ export default class ZilloPaint extends LitElement {
   }
 
   _useTool(tool: string, x: number, y: number) {
-    console.log(`using ${tool} at ${x},${y}`);
+    // ${tool} at ${x},${y}`);
     let should_redraw = false;
 
     if (tool == "brush") {
@@ -361,14 +405,19 @@ export default class ZilloPaint extends LitElement {
   }
 
   _endUseTool() {
-    console.log("stop using " + this.selectedTool);
+    //console.log("stop using " + this.selectedTool);
   }
 
   // use current brush to set pixels
   _useBrush(x: number, y: number, rgb: rgb, size: number) {
     let redraw = false;
     const pixels = this._getBrushPixels(x, y, size);
-    pixels.forEach((pixel) => {
+    const pixels_filtered = pixels.filter((pixel) => {
+      if (pixel.x >= this.width || pixel.x < 0) return false;
+      if (pixel.y >= this.height || pixel.y < 0) return false;
+      return true;
+    });
+    pixels_filtered.forEach((pixel) => {
       if (this._paintPixel(pixel.x, pixel.y, rgb)) redraw = true;
     });
     return redraw;
