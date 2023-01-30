@@ -97,23 +97,23 @@ const hexToRgb = (hex: string): rgb => {
   var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   return result
     ? {
-        r: parseInt(result[1], 16),
-        g: parseInt(result[2], 16),
-        b: parseInt(result[3], 16),
-        short:
-          "" +
-          parseInt(result[1], 16) +
-          "," +
-          parseInt(result[2], 16) +
-          "," +
-          parseInt(result[3], 16),
-      }
+      r: parseInt(result[1], 16),
+      g: parseInt(result[2], 16),
+      b: parseInt(result[3], 16),
+      short:
+        "" +
+        parseInt(result[1], 16) +
+        "," +
+        parseInt(result[2], 16) +
+        "," +
+        parseInt(result[3], 16),
+    }
     : {
-        r: 0,
-        g: 0,
-        b: 0,
-        short: "00,00,00",
-      };
+      r: 0,
+      g: 0,
+      b: 0,
+      short: "00,00,00",
+    };
 };
 
 const colorPalette = nesPalette.map((color) => {
@@ -151,7 +151,7 @@ export default class ZilloPaint extends LitElement {
   @state()
   secondaryColor: string = "#000000";
   @state()
-  brushSize: number = 1;
+  brushSize: number = 0;
   @state()
   eraserSize: number = 1;
   @state()
@@ -368,6 +368,8 @@ export default class ZilloPaint extends LitElement {
   _useBrush(x: number, y: number, rgb: rgb, size: number) {
     let redraw = false;
     const pixels = this._getBrushPixels(x, y, size);
+    console.log('tous les pxels qui sont a draw')
+    console.log('tous les pxels qui sont a draw', pixels)
     pixels.forEach((pixel) => {
       if (this._paintPixel(pixel.x, pixel.y, rgb)) redraw = true;
     });
@@ -487,7 +489,7 @@ export default class ZilloPaint extends LitElement {
     const ctx = this.ctx;
     const tool_x = this.pixel_x - 1;
     const tool_y = this.pixel_y - 1;
-    let toolpixels: Array<pixelcoord> = [];
+    let toolpixels: Set<pixelcoord> = new Set();
 
     //fill with white backgound (for transparency)
     ctx.fillStyle = "white";
@@ -502,7 +504,7 @@ export default class ZilloPaint extends LitElement {
         toolpixels = this._getBrushPixels(tool_x, tool_y, this.eraserSize);
       }
       if (this.selectedTool == "colorpicker") {
-        toolpixels = [{ x: tool_x, y: tool_y }];
+        toolpixels = new Set([{ x: tool_x, y: tool_y }]);
       }
     }
 
@@ -548,11 +550,15 @@ export default class ZilloPaint extends LitElement {
 
         //preview tool path
         if (this.toolpreview) {
-          let pixel = toolpixels.filter((pixel) => {
-            return pixel.x == x && pixel.y == y;
-          });
+          let previewPixels = new Set();
 
-          if (pixel.length >= 1) {
+          for (let item of toolpixels) {
+            if (item.x == x && item.y == y) {
+              previewPixels.add(item)
+            }
+          }
+
+          if (previewPixels.size >= 1) {
             ctx.fillStyle = "rgba(255,0,0,0.2)";
             ctx.fillRect(canvasX, canvasY, canvasScale, canvasScale);
             ctx.lineWidth = canvasBorderWidth;
@@ -584,23 +590,45 @@ export default class ZilloPaint extends LitElement {
     let dy = 0;
     let err = 2 - 2 * radius;
     let e2;
-    let pixels = [];
+    let pixels: Set<pixelcoord> = new Set
+
+    if (radius < 3) {
+      for (let i = 0; i <= radius; i++) {
+        for (let j = 0; j <= radius; j++) {
+          if ((i + j) > radius) {
+            continue
+          }
+          console.log('center', center_x + j)
+          console.log('this.width', this.width)
+          console.log('y', j)
+          if ((center_x + j) < this.width) {
+            pixels.add({ x: center_x + j, y: center_y + i });
+          }
+          pixels.add({ x: center_x - j, y: center_y - i });
+          pixels.add({ x: center_x - i, y: center_y + j });
+          pixels.add({ x: center_x + i, y: center_y - j });
+        }
+      }
+      return pixels
+    }
+
+
     do {
-      pixels.push({ x: center_x - dx, y: center_y + dy });
-      pixels.push({ x: center_x + dx, y: center_y + dy });
-      pixels.push({ x: center_x + dx, y: center_y - dy });
-      pixels.push({ x: center_x - dx, y: center_y - dy });
+      pixels.add({ x: center_x - dx, y: center_y + dy });
+      pixels.add({ x: center_x + dx, y: center_y + dy });
+      pixels.add({ x: center_x + dx, y: center_y - dy });
+      pixels.add({ x: center_x - dx, y: center_y - dy });
       let hline_width = 2 * -dx + 1;
       this._getHorizontalLinePixels(
         center_x + dx,
         center_y + dy,
         hline_width
-      ).forEach((pixel) => pixels.push(pixel));
+      ).forEach((pixel) => pixels.add(pixel));
       this._getHorizontalLinePixels(
         center_x + dx,
         center_y - dy,
         hline_width
-      ).forEach((pixel) => pixels.push(pixel));
+      ).forEach((pixel) => pixels.add(pixel));
       e2 = err;
       if (e2 < dy) {
         err += ++dy * 2 + 1;
@@ -619,18 +647,18 @@ export default class ZilloPaint extends LitElement {
     y: number,
     size: number,
     shape: string = "circle"
-  ): Array<pixelcoord> {
-    let pixels: Array<pixelcoord> = [];
+  ): Set<pixelcoord> {
+    let pixels: Set<pixelcoord> = new Set
     if (shape == "square") {
       if (size == 1) {
-        return [{ x: x, y: y }];
+        return new Set([{ x: x, y: y }]);
       }
       for (let px = -Math.floor(size / 2); px < size - 1; px++) {
         for (let py = -Math.floor(size / 2); py < size - 1; py++) {
           const nx = x + px;
           const ny = y + py;
           if (nx < 0 || ny < 0 || nx > this.width || ny > this.height) continue;
-          pixels.push({ x: nx, y: ny });
+          pixels.add({ x: nx, y: ny });
         }
       }
     } else if (shape == "circle") {
@@ -774,9 +802,9 @@ export default class ZilloPaint extends LitElement {
                   <div>size: ${this.brushSize}</div>
                   <input
                     type="range"
-                    min="1"
+                    min="0"
                     max="5"
-                    value="1"
+                    value="0"
                     step="1"
                     @change="${this._updateBrushSize}"
                   />
